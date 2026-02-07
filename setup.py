@@ -1,0 +1,48 @@
+"""Setup configuration for Gnosis."""
+
+from setuptools import setup, find_packages
+from pathlib import Path
+
+
+def read_requirements(filename):
+    """Read requirements from file."""
+    with open(filename) as f:
+        return [
+            line.strip()
+            for line in f
+            if line.strip() and not line.startswith("#") and not line.startswith("-r")
+        ]
+
+
+setup(
+    name="gnosis",
+    version="1.0.0",
+    author="Steffen Hoehne",
+    author_email="steffen.hoehne@shcv.it",
+    description="Website to Markdown converter for LLM knowledge bases",
+    long_description=(Path(__file__).parent / "README.md").read_text()
+    if (Path(__file__).parent / "README.md").exists()
+    else "",
+    long_description_content_type="text/markdown",
+    url="https://github.com/shcv-it/gnosis",
+    packages=find_packages(exclude=["tests"]),
+    package_data={
+        "gnosis": ["config/*.yaml"],
+    },
+    include_package_data=True,
+    classifiers=[
+        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.12",
+        "Topic :: Text Processing :: Markup",
+        "Topic :: Internet :: WWW/HTTP",
+    ],
+    python_requires=">=3.12",
+    install_requires=read_requirements("requirements.txt"),
+    entry_points={
+        "console_scripts": [
+            "gnosis=gnosis.cli.main:main",
+        ],
+    },
+    zip_safe=False,
+)

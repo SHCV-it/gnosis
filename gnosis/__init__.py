@@ -1,0 +1,8 @@
+"""
+Gnosis - Website to Markdown converter for LLM knowledge bases.
+
+Downloads websites and converts them to clean, LLM-friendly markdown.
+"""
+
+__version__ = "1.0.0"
+__author__ = "Steffen Hoehne, SHCV.IT"

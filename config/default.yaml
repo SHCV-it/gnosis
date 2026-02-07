@@ -1,0 +1,104 @@
+# ============================================================================
+# Gnosis - Default Configuration
+# ============================================================================
+# This file contains all configuration parameters for the website-to-markdown
+# converter. Copy this file to customize settings.
+
+# ============================================================================
+# Downloader Settings
+# ============================================================================
+downloader:
+  # Request timeout in seconds
+  timeout: 30
+  
+  # Number of retry attempts on failure
+  retries: 3
+  
+  # User-Agent string for HTTP requests
+  user_agent: "Gnosis/1.0 (Website to Markdown converter)"
+  
+  # Minimum delay between requests in milliseconds (rate limiting)
+  rate_limit_ms: 500
+  
+  # Whether to respect robots.txt
+  respect_robots: true
+
+# ============================================================================
+# Crawler Settings (for --all mode)
+# ============================================================================
+crawler:
+  # Maximum crawl depth from the starting URL
+  max_depth: 10
+  
+  # Maximum number of pages to download
+  max_pages: 100
+  
+  # Number of concurrent HTTP requests
+  concurrent_requests: 5
+
+# ============================================================================
+# Converter Settings
+# ============================================================================
+converter:
+  # HTML tags to completely remove from output
+  excluded_tags:
+    - script
+    - style
+    - noscript
+    - nav
+    - footer
+    - aside
+    - svg
+    - canvas
+    - iframe
+    - button
+    - input
+    - form
+    - meta
+    - link
+    - head
+  
+  # CSS selectors to find main content area (tried in order)
+  content_selectors:
+    - main
+    - article
+    - '[role="main"]'
+    - .content
+    - .documentation
+    - .docs-content
+    - .markdown-body
+    - .prose
+    - "#content"
+    - "#main"
+  
+  # CSS classes to strip from content (sidebars, menus, etc.)
+  strip_classes:
+    - sidebar
+    - menu
+    - toc
+    - table-of-contents
+    - navigation
+    - breadcrumb
+    - pagination
+    - search
+    - header
+    - footer
+  
+  # Whether to include images as markdown references
+  include_images: true
+  
+  # Whether to convert relative URLs to absolute
+  absolute_urls: true
+
+# ============================================================================
+# Output Settings
+# ============================================================================
+output:
+  # Default output directory
+  directory: "./"
+  
+  # Whether to overwrite existing files
+  overwrite: false
+  
+  # File extension for output files
+  extension: ".md"
