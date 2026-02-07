@@ -62,10 +62,12 @@ gnosis URL [OPTIONS]
 
 Options:
   -a, --all           Download all child pages under the URL path
+  -n, --dry-run       Discover and count pages without downloading (requires --all)
   -o, --output DIR    Output directory for markdown files
   -c, --config FILE   Path to YAML configuration file
   -f, --overwrite     Overwrite existing output files
   -q, --quiet         Suppress progress output
+  -v, --verbose       Show detailed conversion process information
   --version           Show version and exit
   --help              Show this message and exit
 ```
@@ -78,6 +80,9 @@ gnosis https://docs.python.org/3/tutorial/
 
 # Download all pages to specific directory
 gnosis https://docs.python.org/3/tutorial/ --all -o ./python-docs/
+
+# Discover how many pages would be downloaded (dry-run)
+gnosis https://docs.python.org/3/tutorial/ --all --dry-run
 
 # Use custom config and overwrite existing files
 gnosis https://example.com/ --config myconfig.yaml --overwrite

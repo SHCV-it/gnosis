@@ -39,6 +39,72 @@ class Crawler:
         self.settings = settings or CrawlerSettings()
         self.downloader = downloader or Downloader()
 
+    async def discover_pages(self, start_url: str) -> Tuple[int, list[str], bool]:
+        """
+        Discover all pages under a URL without processing them.
+
+        Performs the same crawling logic as crawl() but only counts pages
+        and collects URLs without yielding HTML content.
+
+        Args:
+            start_url: The starting URL to discover from.
+
+        Returns:
+            Tuple of (total_count, discovered_urls, hit_max_limit)
+        """
+        # Normalize the starting URL
+        start_url = self._normalize_url(start_url)
+        parsed_start = urlparse(start_url)
+
+        # Extract the base path prefix
+        base_domain = parsed_start.netloc
+        base_path = parsed_start.path.rstrip("/")
+
+        # Track visited URLs and queue
+        visited: Set[str] = set()
+        queue: deque[Tuple[str, int]] = deque()  # (url, depth)
+        queue.append((start_url, 0))
+
+        discovered_urls: list[str] = []
+        hit_max_limit = False
+
+        while queue and len(discovered_urls) < self.settings.max_pages:
+            # Get next URL
+            url, depth = queue.popleft()
+
+            # Skip if already visited
+            if url in visited:
+                continue
+
+            visited.add(url)
+
+            # Download the page to extract links
+            try:
+                html = await self.downloader.fetch(url)
+            except DownloadError:
+                continue
+
+            # Add to discovered list
+            discovered_urls.append(url)
+
+            # Don't discover links if at max depth
+            if depth >= self.settings.max_depth:
+                continue
+
+            # Extract links from the page
+            links = self._extract_links(html, url, base_domain, base_path)
+
+            # Add new links to queue
+            for link in links:
+                if link not in visited:
+                    queue.append((link, depth + 1))
+
+        # Check if we hit the max_pages limit with more pages in queue
+        if len(discovered_urls) >= self.settings.max_pages and queue:
+            hit_max_limit = True
+
+        return len(discovered_urls), discovered_urls, hit_max_limit
+
     async def crawl(self, start_url: str) -> AsyncIterator[Tuple[str, str]]:
         """
         Crawl a website starting from the given URL.

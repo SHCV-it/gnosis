@@ -91,6 +91,12 @@ def url_to_filename(url: str, base_url: Optional[str] = None) -> str:
     is_flag=True,
     help="Show detailed conversion process information.",
 )
+@click.option(
+    "--dry-run",
+    "-n",
+    is_flag=True,
+    help="Discover and count pages without downloading them (requires --all).",
+)
 @click.version_option(version=__version__, prog_name="gnosis")
 def cli(
     url: str,
@@ -100,6 +106,7 @@ def cli(
     overwrite: bool,
     quiet: bool,
     verbose: bool,
+    dry_run: bool,
 ):
     """
     Download websites and convert them to LLM-friendly markdown.
@@ -111,7 +118,13 @@ def cli(
         gnosis https://docs.example.com/
         gnosis https://docs.example.com/ --all
         gnosis https://docs.example.com/ -o ./docs/
+        gnosis https://docs.example.com/ --all --dry-run
     """
+    # Validate dry-run usage
+    if dry_run and not crawl_all:
+        console.print("[red]✗[/red] Error: --dry-run requires --all flag")
+        sys.exit(1)
+
     # Load configuration
     settings = load_config(config)
 
@@ -121,12 +134,15 @@ def cli(
     if overwrite:
         settings.output.overwrite = True
 
-    # Ensure output directory exists
-    output_dir = Path(settings.output.directory)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Ensure output directory exists (unless dry-run)
+    if not dry_run:
+        output_dir = Path(settings.output.directory)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
     # Run the appropriate mode
-    if crawl_all:
+    if dry_run:
+        asyncio.run(discover_pages_mode(url, settings, quiet, verbose))
+    elif crawl_all:
         asyncio.run(crawl_and_convert(url, settings, quiet, verbose))
     else:
         asyncio.run(download_and_convert(url, settings, quiet, verbose))
@@ -167,6 +183,63 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
 
     if not quiet:
         console.print(f"[green]✓[/green] Saved: {output_path}")
+
+
+async def discover_pages_mode(url: str, settings: Settings, quiet: bool, verbose: bool) -> None:
+    """Discover and count pages without processing them."""
+    downloader = Downloader(settings.downloader)
+    crawler = Crawler(settings.crawler, downloader)
+
+    if not quiet:
+        console.print(f"[blue]🔍[/blue] Discovering pages under: {url}")
+        console.print(
+            f"    Max depth: {settings.crawler.max_depth}, "
+            f"Max pages: {settings.crawler.max_pages}"
+        )
+        if verbose:
+            console.print(
+                f"    Rate limit: {settings.downloader.rate_limit_ms}ms, "
+                f"Timeout: {settings.downloader.timeout}s"
+            )
+        console.print()
+
+    try:
+        total_count, discovered_urls, hit_max_limit = await crawler.discover_pages(url)
+    except Exception as e:
+        console.print(f"[red]✗[/red] Discovery failed: {e}")
+        sys.exit(1)
+
+    if not quiet:
+        console.print()
+        if hit_max_limit:
+            console.print(
+                f"[yellow]📊[/yellow] Found {total_count}+ pages "
+                f"(stopped at max_pages limit of {settings.crawler.max_pages})"
+            )
+            console.print(
+                f"    [dim]Note: More pages may exist beyond this limit[/dim]"
+            )
+        else:
+            console.print(
+                f"[green]📊[/green] Found {total_count} pages "
+                f"(within max_pages limit of {settings.crawler.max_pages})"
+            )
+
+        # Show URLs
+        if total_count > 0:
+            console.print()
+            if verbose:
+                # Show all discovered URLs in verbose mode
+                console.print("[dim]Discovered pages:[/dim]")
+                for i, page_url in enumerate(discovered_urls, 1):
+                    console.print(f"  {i}. {page_url}")
+            else:
+                # Show sample in normal mode
+                console.print("[dim]Sample pages:[/dim]")
+                for i, page_url in enumerate(discovered_urls[:5], 1):
+                    console.print(f"  {i}. {page_url}")
+                if total_count > 5:
+                    console.print(f"  ... and {total_count - 5} more")
 
 
 async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: bool) -> None:
