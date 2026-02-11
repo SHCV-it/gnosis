@@ -102,3 +102,45 @@ output:
   
   # File extension for output files
   extension: ".md"
+
+# ============================================================================
+# QMD Knowledge Base Integration
+# ============================================================================
+qmd:
+  # Whether to enable QMD integration (also enabled via --qmd-index flag)
+  enabled: false
+  
+  # HuggingFace model for generating context descriptions
+  # Options: "Qwen/Qwen3-0.6B" (fast, small), "google/gemma-3-1b-it" (larger)
+  llm_model: "Qwen/Qwen3-0.6B"
+  
+  # Device for LLM inference (cpu, cuda, or auto)
+  llm_device: "cpu"
+  
+  # Data type for model weights
+  llm_dtype: "float32"
+  
+  # Prompt template for context generation
+  # Use {content} placeholder for the aggregated markdown content
+  context_prompt_template: |
+    What is this documentation about? Reply with one concise sentence only. Do not repeat the title, do not use markdown, do not use headings.
+    
+    {content}
+  
+  # Maximum tokens to generate for context description
+  max_tokens: 80
+  
+  # Temperature for text generation (higher = more creative)
+  temperature: 0.3
+  
+  # Top-k sampling parameter
+  top_k: 50
+  
+  # Top-p (nucleus) sampling parameter
+  top_p: 0.95
+  
+  # Number of markdown files to sample for context generation
+  sample_files_limit: 5
+  
+  # Maximum characters to use from sampled files
+  sample_content_max_chars: 10000

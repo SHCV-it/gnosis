@@ -5,6 +5,7 @@ Provides the command-line interface using Click.
 """
 
 import asyncio
+import re
 import sys
 from pathlib import Path
 from typing import Optional
@@ -18,6 +19,8 @@ from gnosis.config import Settings, load_config
 from gnosis.core.downloader import Downloader
 from gnosis.core.converter import HTMLToMarkdownConverter
 from gnosis.core.crawler import Crawler
+from gnosis.integrations.llm import LLMContextGenerator
+from gnosis.integrations.qmd import QMDIntegrator, QMDNotFoundError, QMDCommandError
 
 console = Console()
 
@@ -50,6 +53,38 @@ def url_to_filename(url: str, base_url: Optional[str] = None) -> str:
     path_slug = path.replace("/", "-")
 
     return f"{domain}-{path_slug}"
+
+
+def url_to_collection_name(url: str) -> str:
+    """
+    Convert a URL to a QMD collection name.
+
+    Args:
+        url: The URL to convert.
+
+    Returns:
+        A sanitized collection name.
+
+    Examples:
+        https://docs.example.com/ -> docs-example-com
+        https://docs.example.com/api/v2 -> docs-example-com-api-v2
+    """
+    parsed = urlparse(url)
+    domain = parsed.netloc
+    path = parsed.path.strip("/")
+
+    # Combine domain and path
+    if path:
+        name = f"{domain}/{path}"
+    else:
+        name = domain
+
+    # Sanitize: lowercase, replace special chars with hyphens
+    name = name.lower()
+    name = re.sub(r'[^a-z0-9]+', '-', name)
+    name = name.strip('-')
+
+    return name
 
 
 @click.command()
@@ -97,6 +132,11 @@ def url_to_filename(url: str, base_url: Optional[str] = None) -> str:
     is_flag=True,
     help="Discover and count pages without downloading them (requires --all).",
 )
+@click.option(
+    "--qmd-index",
+    is_flag=True,
+    help="Index the downloaded content into QMD knowledge base with LLM-generated context.",
+)
 @click.version_option(version=__version__, prog_name="gnosis")
 def cli(
     url: str,
@@ -107,6 +147,7 @@ def cli(
     quiet: bool,
     verbose: bool,
     dry_run: bool,
+    qmd_index: bool,
 ):
     """
     Download websites and convert them to LLM-friendly markdown.
@@ -133,6 +174,8 @@ def cli(
         settings.output.directory = str(output)
     if overwrite:
         settings.output.overwrite = True
+    if qmd_index:
+        settings.qmd.enabled = True
 
     # Ensure output directory exists (unless dry-run)
     if not dry_run:
@@ -146,6 +189,95 @@ def cli(
         asyncio.run(crawl_and_convert(url, settings, quiet, verbose))
     else:
         asyncio.run(download_and_convert(url, settings, quiet, verbose))
+
+
+def run_qmd_integration(
+    url: str,
+    output_dir: Path,
+    settings: Settings,
+    quiet: bool
+) -> None:
+    """
+    Run the QMD knowledge base integration pipeline.
+    
+    Args:
+        url: Original URL that was downloaded.
+        output_dir: Directory containing the markdown files.
+        settings: Configuration settings.
+        quiet: Whether to suppress output.
+    """
+    if not settings.qmd.enabled:
+        return
+    
+    try:
+        if not quiet:
+            console.print("\n[blue]🔗[/blue] QMD Integration")
+            console.print("[dim]─────────────────────[/dim]")
+        
+        # Initialize QMD integrator
+        try:
+            qmd = QMDIntegrator()
+        except QMDNotFoundError as e:
+            console.print(f"[yellow]⚠[/yellow] QMD not found: {e}")
+            console.print("[dim]Skipping QMD integration.[/dim]")
+            return
+        
+        # Generate collection name from URL
+        collection_name = url_to_collection_name(url)
+        
+        if not quiet:
+            console.print(f"[blue]📚[/blue] Collection: {collection_name}")
+        
+        # Find all markdown files
+        markdown_files = sorted(output_dir.glob("**/*.md"))
+        
+        if not markdown_files:
+            console.print("[yellow]⚠[/yellow] No markdown files found, skipping QMD integration.")
+            return
+        
+        if not quiet:
+            console.print(f"[dim]Found {len(markdown_files)} markdown file(s)[/dim]")
+        
+        # Generate context description using LLM
+        if not quiet:
+            console.print(f"[blue]🤖[/blue] Generating context with LLM ({settings.qmd.llm_model})...")
+        
+        try:
+            llm_generator = LLMContextGenerator(settings.qmd)
+            context_description = llm_generator.generate_context(
+                markdown_files,
+                collection_name,
+                url
+            )
+            llm_generator.cleanup()
+        except Exception as e:
+            console.print(f"[red]✗[/red] LLM generation failed: {e}")
+            console.print("[dim]You may need to accept the model license and login:[/dim]")
+            console.print(f"[dim]  1. Visit https://huggingface.co/{settings.qmd.llm_model}[/dim]")
+            console.print("[dim]  2. Run: huggingface-cli login[/dim]")
+            return
+        
+        if not quiet:
+            console.print(f"[green]✓[/green] Generated context: {context_description[:100]}...")
+        
+        # Run QMD pipeline
+        if not quiet:
+            console.print(f"[blue]📚[/blue] Adding collection to QMD...")
+        
+        try:
+            qmd.run_pipeline(output_dir, collection_name, context_description)
+        except QMDCommandError as e:
+            console.print(f"[red]✗[/red] QMD pipeline failed: {e}")
+            return
+        
+        if not quiet:
+            console.print(f"[green]✅[/green] QMD integration complete!")
+            console.print(f"[dim]Collection '{collection_name}' is ready for semantic search.[/dim]")
+    
+    except KeyboardInterrupt:
+        console.print("\n[yellow]⚠[/yellow] QMD integration interrupted")
+    except Exception as e:
+        console.print(f"[red]✗[/red] QMD integration error: {e}")
 
 
 async def download_and_convert(url: str, settings: Settings, quiet: bool, verbose: bool) -> None:
@@ -183,6 +315,9 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
 
     if not quiet:
         console.print(f"[green]✓[/green] Saved: {output_path}")
+    
+    # Run QMD integration if enabled
+    run_qmd_integration(url, output_dir, settings, quiet)
 
 
 async def discover_pages_mode(url: str, settings: Settings, quiet: bool, verbose: bool) -> None:
@@ -289,6 +424,9 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
         console.print(f"    Saved: {saved_count} files")
         if skipped_count > 0:
             console.print(f"    Skipped: {skipped_count} files (already exist)")
+    
+    # Run QMD integration if enabled
+    run_qmd_integration(url, output_dir, settings, quiet)
 
 
 def main():

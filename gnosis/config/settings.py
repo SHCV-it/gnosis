@@ -96,6 +96,27 @@ class OutputSettings:
 
 
 @dataclass
+class QMDSettings:
+    """Settings for QMD knowledge base integration."""
+
+    enabled: bool = False
+    llm_model: str = "Qwen/Qwen3-0.6B"
+    llm_device: str = "cpu"
+    llm_dtype: str = "float32"
+    context_prompt_template: str = (
+        "What is this documentation about? Reply with one concise sentence only."
+        " Do not repeat the title, do not use markdown, do not use headings."
+        "\n\n{content}"
+    )
+    max_tokens: int = 80
+    temperature: float = 0.3
+    top_k: int = 50
+    top_p: float = 0.95
+    sample_files_limit: int = 5
+    sample_content_max_chars: int = 10000
+
+
+@dataclass
 class Settings:
     """Main settings container for Gnosis."""
 
@@ -103,6 +124,7 @@ class Settings:
     crawler: CrawlerSettings = field(default_factory=CrawlerSettings)
     converter: ConverterSettings = field(default_factory=ConverterSettings)
     output: OutputSettings = field(default_factory=OutputSettings)
+    qmd: QMDSettings = field(default_factory=QMDSettings)
 
 
 def load_config(config_path: Optional[Path] = None) -> Settings:
@@ -169,6 +191,27 @@ def load_config(config_path: Optional[Path] = None) -> Settings:
             directory=out.get("directory", settings.output.directory),
             overwrite=out.get("overwrite", settings.output.overwrite),
             extension=out.get("extension", settings.output.extension),
+        )
+
+    # Load QMD settings
+    if "qmd" in data:
+        qmd = data["qmd"]
+        settings.qmd = QMDSettings(
+            enabled=qmd.get("enabled", settings.qmd.enabled),
+            llm_model=qmd.get("llm_model", settings.qmd.llm_model),
+            llm_device=qmd.get("llm_device", settings.qmd.llm_device),
+            llm_dtype=qmd.get("llm_dtype", settings.qmd.llm_dtype),
+            context_prompt_template=qmd.get(
+                "context_prompt_template", settings.qmd.context_prompt_template
+            ),
+            max_tokens=qmd.get("max_tokens", settings.qmd.max_tokens),
+            temperature=qmd.get("temperature", settings.qmd.temperature),
+            top_k=qmd.get("top_k", settings.qmd.top_k),
+            top_p=qmd.get("top_p", settings.qmd.top_p),
+            sample_files_limit=qmd.get("sample_files_limit", settings.qmd.sample_files_limit),
+            sample_content_max_chars=qmd.get(
+                "sample_content_max_chars", settings.qmd.sample_content_max_chars
+            ),
         )
 
     return settings
