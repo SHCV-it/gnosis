@@ -5,6 +5,7 @@ Provides a wrapper around the QMD CLI to add collections, contexts,
 and generate embeddings for documentation knowledge bases.
 """
 
+import re
 import subprocess
 import shutil
 from pathlib import Path
@@ -108,18 +109,61 @@ class QMDIntegrator:
         
         result = self._run_command(cmd, check=False)
         
-        # QMD returns non-zero if collection already exists, check stderr
         if result.returncode != 0:
-            if "already exists" in result.stderr.lower():
-                # Collection already exists - this is acceptable
+            output = result.stdout + result.stderr
+            
+            if "already exists" in output.lower():
+                # Remove the existing collection and re-add.
+                # Two cases: path conflict (different name owns the path)
+                # or name conflict (same name already exists).
+                existing_name = self._parse_existing_collection_name(output) or collection_name
+                self.remove_collection(existing_name)
+                # Retry the add after removal
+                retry = self._run_command(cmd, check=False)
+                if retry.returncode != 0:
+                    raise QMDCommandError(
+                        f"Failed to add collection '{collection_name}' after "
+                        f"removing '{existing_name}'\n"
+                        f"Error: {retry.stdout + retry.stderr}"
+                    )
                 return True
-            else:
-                raise QMDCommandError(
-                    f"Failed to add collection '{collection_name}'\\n"
-                    f"Error: {result.stderr}"
-                )
+            
+            raise QMDCommandError(
+                f"Failed to add collection '{collection_name}'\n"
+                f"Error: {output}"
+            )
         
         return True
+    
+    def remove_collection(self, collection_name: str) -> bool:
+        """
+        Remove a QMD collection.
+        
+        Args:
+            collection_name: Name of the collection to remove.
+        
+        Returns:
+            True if successful.
+        
+        Raises:
+            QMDCommandError: If the command fails.
+        """
+        self._run_command(["qmd", "collection", "remove", collection_name])
+        return True
+    
+    @staticmethod
+    def _parse_existing_collection_name(output: str) -> Optional[str]:
+        """
+        Parse the existing collection name from QMD 'already exists' output.
+        
+        Args:
+            output: Combined stdout+stderr from the qmd command.
+        
+        Returns:
+            The existing collection name, or None if not found.
+        """
+        match = re.search(r'Name:\s+(\S+)', output)
+        return match.group(1) if match else None
     
     def add_context(
         self,
