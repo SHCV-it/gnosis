@@ -6,6 +6,7 @@ pages that match the same domain and path prefix.
 """
 
 import asyncio
+import posixpath
 from collections import deque
 from typing import AsyncIterator, Optional, Set, Tuple
 from urllib.parse import urljoin, urlparse, urlunparse
@@ -58,7 +59,7 @@ class Crawler:
 
         # Extract the base path prefix
         base_domain = parsed_start.netloc
-        base_path = parsed_start.path.rstrip("/")
+        base_path = self._get_base_path(parsed_start.path)
 
         # Track visited URLs and queue
         visited: Set[str] = set()
@@ -124,7 +125,7 @@ class Crawler:
 
         # Extract the base path prefix
         base_domain = parsed_start.netloc
-        base_path = parsed_start.path.rstrip("/")
+        base_path = self._get_base_path(parsed_start.path)
 
         # Track visited URLs and queue
         visited: Set[str] = set()
@@ -164,6 +165,26 @@ class Crawler:
             for link in links:
                 if link not in visited:
                     queue.append((link, depth + 1))
+
+    def _get_base_path(self, path: str) -> str:
+        """
+        Extract the base path prefix for crawl scope.
+
+        If the path looks like a file (last segment contains a dot),
+        returns the parent directory. Otherwise returns the path as-is.
+
+        Args:
+            path: URL path component.
+
+        Returns:
+            Base path prefix for matching discovered URLs.
+        """
+        path = path.rstrip("/")
+        # Check if last segment looks like a file (e.g. page.html)
+        last_segment = posixpath.basename(path)
+        if "." in last_segment:
+            return posixpath.dirname(path)
+        return path
 
     def _normalize_url(self, url: str) -> str:
         """
