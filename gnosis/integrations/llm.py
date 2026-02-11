@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig
 
 from gnosis.config.settings import QMDSettings
 
@@ -50,9 +50,14 @@ class LLMContextGenerator:
         # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(self.settings.llm_model)
         
+        # Load model config and silence tied weights warning
+        config = AutoConfig.from_pretrained(self.settings.llm_model)
+        config.tie_word_embeddings = False
+
         # Load model
         self.model = AutoModelForCausalLM.from_pretrained(
             self.settings.llm_model,
+            config=config,
             dtype=dtype,
             device_map=self.settings.llm_device
         )
