@@ -214,8 +214,11 @@ class Crawler:
         for a_tag in soup.find_all("a", href=True):
             href = a_tag["href"]
 
-            # Skip empty, anchor-only, or javascript links
-            if not href or href.startswith(("#", "javascript:", "mailto:", "tel:")):
+            # Skip empty, bare anchor (#), or javascript/mailto/tel links
+            # Bare "#" is typically a dropdown toggle or placeholder, not a real link.
+            # Fragment links like "#installation" are valid same-page anchors that
+            # resolve to the current page URL via urljoin.
+            if not href or href == "#" or href.startswith(("javascript:", "mailto:", "tel:")):
                 continue
 
             # Resolve relative URLs
