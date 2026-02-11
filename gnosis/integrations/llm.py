@@ -53,7 +53,7 @@ class LLMContextGenerator:
         # Load model
         self.model = AutoModelForCausalLM.from_pretrained(
             self.settings.llm_model,
-            torch_dtype=dtype,
+            dtype=dtype,
             device_map=self.settings.llm_device
         )
         self.model.eval()
