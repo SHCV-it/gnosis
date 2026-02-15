@@ -5,6 +5,7 @@ Provides the command-line interface using Click.
 """
 
 import asyncio
+import hashlib
 import re
 import sys
 from pathlib import Path
@@ -46,13 +47,20 @@ def url_to_filename(url: str, base_url: Optional[str] = None) -> str:
     # Get path and clean it
     path = parsed.path.strip("/")
 
-    if not path:
+    if not path and not parsed.query:
         return domain
 
     # Convert path to slug
     path_slug = path.replace("/", "-")
 
-    return f"{domain}-{path_slug}"
+    base = f"{domain}-{path_slug}" if path else domain
+
+    # Append short hash when query parameters are present to avoid filename collisions
+    if parsed.query:
+        url_hash = hashlib.sha256(url.encode()).hexdigest()[:8]
+        return f"{base}-{url_hash}"
+
+    return base
 
 
 def url_to_collection_name(url: str) -> str:
