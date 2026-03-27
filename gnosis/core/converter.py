@@ -56,7 +56,7 @@ class HTMLToMarkdownConverter:
 
         # Remove elements with excluded classes
         for class_name in self.settings.strip_classes:
-            for tag in soup.find_all(class_=lambda x: x and class_name in x):
+            for tag in soup.find_all(class_=class_name):
                 tag.decompose()
 
         # Find main content area(s)
