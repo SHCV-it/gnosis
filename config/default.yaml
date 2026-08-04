@@ -10,18 +10,43 @@
 downloader:
   # Request timeout in seconds
   timeout: 30
-  
+
   # Number of retry attempts on failure
   retries: 3
-  
+
   # User-Agent string for HTTP requests
-  user_agent: "Gnosis/1.0 (Website to Markdown converter)"
-  
+  user_agent: "Gnosis/1.1 (Website to Markdown converter)"
+
   # Minimum delay between requests in milliseconds (rate limiting)
   rate_limit_ms: 500
-  
+
   # Whether to respect robots.txt
   respect_robots: true
+
+  # Extra HTTP headers sent with every request.
+  # ${ENV_VAR} references are expanded at load time — keep secrets in the
+  # environment, never in this file.
+  # headers:
+  #   X-Custom-Header: "some-value"
+
+  # Authentication. Exactly one scheme; secrets via ${ENV_VAR}.
+  #
+  # Bearer token:
+  # auth:
+  #   type: bearer
+  #   token: "${MY_API_TOKEN}"
+  #
+  # HTTP Basic (Confluence Cloud: email + API token):
+  # auth:
+  #   type: basic
+  #   username: "me@example.com"
+  #   password: "${CONFLUENCE_PAT}"
+  #
+  # Arbitrary auth header:
+  # auth:
+  #   type: header
+  #   name: "X-API-Key"
+  #   value: "${MY_API_KEY}"
 
 # ============================================================================
 # Crawler Settings (for --all mode)
@@ -58,20 +83,24 @@ converter:
     - link
     - head
   
-  # CSS selectors to find main content area (tried in order)
+  # CSS selectors to find the main content area. Tried in order — the
+  # FIRST selector with a substantial match wins, so platform-specific
+  # containers come before generic landmarks that may wrap nav chrome.
   content_selectors:
+    - .markdown-body        # GitHub / GitLab rendered markdown
+    - .ak-renderer-document # Confluence Cloud page body
+    - .wiki-content         # Confluence Server/Data Center page body
+    - .docs-content
+    - .documentation
     - main
     - article
     - '[role="main"]'
-    - .content
-    - .documentation
-    - .docs-content
-    - .markdown-body
     - .prose
+    - .content
     - "#content"
     - "#main"
   
-  # CSS classes to strip from content (sidebars, menus, etc.)
+  # CSS classes to strip from content — exact class-token match
   strip_classes:
     - sidebar
     - menu
@@ -83,7 +112,28 @@ converter:
     - search
     - header
     - footer
-  
+
+  # Boilerplate words: class tokens are split on '-'/'_' into words and
+  # stripped if any word matches. Catches namespaced framework classes like
+  # 'bd-sidebar-primary' without false-positives like 'research-content'.
+  strip_class_words:
+    - sidebar
+    - toc
+    - breadcrumb
+    - breadcrumbs
+    - pagination
+    - pager
+    - sourcelink
+    - headerlink
+    - prevnext
+    - cookie
+    - consent
+    - newsletter
+    - subscribe
+    - social
+    - share
+    - feedback
+
   # Whether to include images as markdown references
   include_images: true
   
@@ -96,12 +146,23 @@ converter:
 output:
   # Default output directory
   directory: "./"
-  
+
   # Whether to overwrite existing files
   overwrite: false
-  
+
   # File extension for output files
   extension: ".md"
+
+  # Write a YAML frontmatter block with provenance metadata to every file:
+  # title, url, fetched_at (UTC), content_hash (sha256 of body), status_code,
+  # language, author, etag/last_modified, generator version.
+  frontmatter: true
+
+  # Extra constant frontmatter fields added to every file
+  # (values support ${ENV_VAR} expansion). Example:
+  # frontmatter_extra:
+  #   tags: [documentation]
+  #   owner: knowledge-team
 
 # ============================================================================
 # QMD Knowledge Base Integration

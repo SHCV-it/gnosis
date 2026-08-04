@@ -2,9 +2,13 @@
 HTTP downloader for fetching web pages.
 
 Uses httpx for async HTTP requests with retry and rate limiting support.
+Supports bearer/basic/custom-header authentication (secrets via environment
+variables) and returns rich fetch results carrying provenance metadata.
 """
 
 import asyncio
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Optional
 
 import httpx
@@ -18,9 +22,31 @@ class DownloadError(Exception):
     pass
 
 
+@dataclass
+class FetchResult:
+    """
+    Result of fetching one URL, including provenance metadata.
+
+    Attributes:
+        url: The URL as requested.
+        final_url: The URL after following redirects.
+        status_code: HTTP status code of the final response.
+        html: Response body decoded as text.
+        fetched_at: UTC timestamp (ISO 8601) of the fetch.
+        response_headers: Final response headers (lowercase keys).
+    """
+
+    url: str
+    final_url: str
+    status_code: int
+    html: str
+    fetched_at: str
+    response_headers: dict[str, str] = field(default_factory=dict)
+
+
 class Downloader:
     """
-    Async HTTP downloader with retry and rate limiting.
+    Async HTTP downloader with retry, rate limiting, and auth support.
 
     Attributes:
         settings: Downloader configuration settings.
@@ -40,14 +66,17 @@ class Downloader:
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client."""
         if self._client is None or self._client.is_closed:
+            headers = {
+                "User-Agent": self.settings.user_agent,
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+            }
+            # Custom headers and auth override/extend the defaults
+            headers.update(self.settings.request_headers())
             self._client = httpx.AsyncClient(
                 timeout=httpx.Timeout(self.settings.timeout),
                 follow_redirects=True,
-                headers={
-                    "User-Agent": self.settings.user_agent,
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Accept-Language": "en-US,en;q=0.5",
-                },
+                headers=headers,
             )
         return self._client
 
@@ -65,15 +94,15 @@ class Downloader:
 
         self._last_request_time = asyncio.get_event_loop().time()
 
-    async def fetch(self, url: str) -> str:
+    async def fetch_result(self, url: str) -> FetchResult:
         """
-        Fetch the HTML content of a URL.
+        Fetch a URL and return the full result with provenance metadata.
 
         Args:
             url: The URL to fetch.
 
         Returns:
-            The HTML content as a string.
+            FetchResult with HTML, final URL, status code, timestamp, headers.
 
         Raises:
             DownloadError: If the download fails after all retries.
@@ -88,7 +117,14 @@ class Downloader:
                 response = await client.get(url)
                 response.raise_for_status()
 
-                return response.text
+                return FetchResult(
+                    url=url,
+                    final_url=str(response.url),
+                    status_code=response.status_code,
+                    html=response.text,
+                    fetched_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    response_headers={k.lower(): v for k, v in response.headers.items()},
+                )
 
             except httpx.HTTPStatusError as e:
                 last_error = e
@@ -104,6 +140,24 @@ class Downloader:
                 await asyncio.sleep(wait_time)
 
         raise DownloadError(f"Failed to download {url}: {last_error}")
+
+    async def fetch(self, url: str) -> str:
+        """
+        Fetch the HTML content of a URL.
+
+        Convenience wrapper around fetch_result() for callers that only
+        need the body (e.g. the crawler's link-discovery pass).
+
+        Args:
+            url: The URL to fetch.
+
+        Returns:
+            The HTML content as a string.
+
+        Raises:
+            DownloadError: If the download fails after all retries.
+        """
+        return (await self.fetch_result(url)).html
 
     async def close(self) -> None:
         """Close the HTTP client."""

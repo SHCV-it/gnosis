@@ -6,6 +6,7 @@ Provides the command-line interface using Click.
 
 import asyncio
 import hashlib
+import json
 import re
 import sys
 from pathlib import Path
@@ -13,13 +14,16 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import click
+import yaml
 from rich.console import Console
 
 from gnosis import __version__
 from gnosis.config import Settings, load_config
+from gnosis.config.settings import AuthSettings, expand_env
 from gnosis.core.downloader import Downloader
 from gnosis.core.converter import HTMLToMarkdownConverter
 from gnosis.core.crawler import Crawler
+from gnosis.core.provenance import build_frontmatter, compute_content_hash, render_document
 from gnosis.integrations.llm import LLMContextGenerator
 from gnosis.integrations.qmd import QMDIntegrator, QMDNotFoundError, QMDCommandError
 
@@ -95,6 +99,108 @@ def url_to_collection_name(url: str) -> str:
     return name
 
 
+def _parse_frontmatter_extras(pairs: tuple[str, ...]) -> dict:
+    """
+    Parse repeated 'KEY: VALUE' CLI options into a dict.
+
+    Values are parsed as YAML scalars/collections so types survive
+    (e.g. 'tags: [a, b]' -> list, 'draft: true' -> bool).
+
+    Args:
+        pairs: Tuple of "KEY: VALUE" strings.
+
+    Returns:
+        Dict of extra frontmatter fields.
+    """
+    extras: dict = {}
+    for pair in pairs:
+        if ":" not in pair:
+            console.print(f"[red]✗[/red] Invalid --frontmatter value (expected KEY: VALUE): {pair}")
+            sys.exit(1)
+        key, _, raw_value = pair.partition(":")
+        key = key.strip()
+        if not key:
+            console.print(f"[red]✗[/red] Empty --frontmatter key in: {pair}")
+            sys.exit(1)
+        try:
+            parsed = yaml.safe_load(f"{key}: {raw_value.strip()}")
+            extras[key] = parsed[key]
+        except yaml.YAMLError:
+            extras[key] = raw_value.strip()
+    return extras
+
+
+def _apply_cli_auth(
+    settings: Settings,
+    *,
+    extra_headers: tuple[str, ...],
+    bearer_token_env: Optional[str],
+    basic_user: Optional[str],
+    basic_token_env: Optional[str],
+) -> None:
+    """
+    Apply CLI-provided auth and custom headers onto downloader settings.
+
+    Secrets are always read from environment variables, never from CLI
+    arguments directly (which would leak into shell history and logs).
+
+    Args:
+        settings: Settings object to mutate.
+        extra_headers: Repeated "Name: Value" header strings (${VAR} expanded).
+        bearer_token_env: Env var name holding a bearer token.
+        basic_user: HTTP Basic username.
+        basic_token_env: Env var name holding the Basic password/token.
+    """
+    import os
+
+    for header in extra_headers:
+        if ":" not in header:
+            console.print(f"[red]✗[/red] Invalid --header value (expected Name: Value): {header}")
+            sys.exit(1)
+        name, _, value = header.partition(":")
+        settings.downloader.headers[name.strip()] = expand_env(value.strip())
+
+    if bearer_token_env:
+        token = os.environ.get(bearer_token_env, "")
+        if not token:
+            console.print(f"[red]✗[/red] Env var {bearer_token_env} is not set (needed for --bearer-token-env)")
+            sys.exit(1)
+        settings.downloader.auth = AuthSettings(type="bearer", token=token)
+    elif basic_user or basic_token_env:
+        if not (basic_user and basic_token_env):
+            console.print("[red]✗[/red] --basic-user and --basic-token-env must be used together")
+            sys.exit(1)
+        token = os.environ.get(basic_token_env, "")
+        if not token:
+            console.print(f"[red]✗[/red] Env var {basic_token_env} is not set (needed for --basic-token-env)")
+            sys.exit(1)
+        settings.downloader.auth = AuthSettings(
+            type="basic", username=basic_user, password=token
+        )
+
+
+def _render_output(fetch, markdown: str, metadata: dict, settings: Settings) -> str:
+    """
+    Render the final document: markdown body, with provenance frontmatter
+    unless disabled.
+
+    Args:
+        fetch: FetchResult for the page.
+        markdown: Converted markdown body.
+        metadata: Extracted page metadata dict.
+        settings: Current settings.
+
+    Returns:
+        Document string ready to write.
+    """
+    if not settings.output.frontmatter:
+        return markdown if markdown.endswith("\n") else markdown + "\n"
+    frontmatter = build_frontmatter(
+        fetch, markdown, metadata, extra=settings.output.frontmatter_extra
+    )
+    return render_document(frontmatter, markdown)
+
+
 @click.command()
 @click.argument("url")
 @click.option(
@@ -145,6 +251,40 @@ def url_to_collection_name(url: str) -> str:
     is_flag=True,
     help="Index the downloaded content into QMD knowledge base with LLM-generated context.",
 )
+@click.option(
+    "--no-frontmatter",
+    is_flag=True,
+    help="Do not write the YAML provenance frontmatter block.",
+)
+@click.option(
+    "--frontmatter",
+    "frontmatter_extra",
+    multiple=True,
+    metavar="KEY: VALUE",
+    help="Add a constant frontmatter field (repeatable). Example: --frontmatter 'tags: [docs]'",
+)
+@click.option(
+    "--header",
+    "extra_headers",
+    multiple=True,
+    metavar="NAME: VALUE",
+    help="Extra HTTP header for every request (repeatable). ${ENV_VAR} is expanded. ",
+)
+@click.option(
+    "--bearer-token-env",
+    metavar="ENV_VAR",
+    help="Send 'Authorization: Bearer <token>' with the token read from ENV_VAR.",
+)
+@click.option(
+    "--basic-user",
+    metavar="USERNAME",
+    help="HTTP Basic username (e.g. Confluence account email). Requires --basic-token-env.",
+)
+@click.option(
+    "--basic-token-env",
+    metavar="ENV_VAR",
+    help="HTTP Basic password/token read from ENV_VAR (e.g. CONFLUENCE_PAT).",
+)
 @click.version_option(version=__version__, prog_name="gnosis")
 def cli(
     url: str,
@@ -156,6 +296,12 @@ def cli(
     verbose: bool,
     dry_run: bool,
     qmd_index: bool,
+    no_frontmatter: bool,
+    frontmatter_extra: tuple[str, ...],
+    extra_headers: tuple[str, ...],
+    bearer_token_env: Optional[str],
+    basic_user: Optional[str],
+    basic_token_env: Optional[str],
 ):
     """
     Download websites and convert them to LLM-friendly markdown.
@@ -167,7 +313,8 @@ def cli(
         gnosis https://docs.example.com/
         gnosis https://docs.example.com/ --all
         gnosis https://docs.example.com/ -o ./docs/
-        gnosis https://docs.example.com/ --all --dry-run
+        gnosis https://confluence.example.com/wiki/spaces/ABC/pages/123 \\
+            --basic-user me@example.com --basic-token-env CONFLUENCE_PAT
     """
     # Validate dry-run usage
     if dry_run and not crawl_all:
@@ -184,6 +331,19 @@ def cli(
         settings.output.overwrite = True
     if qmd_index:
         settings.qmd.enabled = True
+    if no_frontmatter:
+        settings.output.frontmatter = False
+    if frontmatter_extra:
+        settings.output.frontmatter_extra.update(_parse_frontmatter_extras(frontmatter_extra))
+
+    # Apply auth / custom headers from CLI
+    _apply_cli_auth(
+        settings,
+        extra_headers=extra_headers,
+        bearer_token_env=bearer_token_env,
+        basic_user=basic_user,
+        basic_token_env=basic_token_env,
+    )
 
     # Ensure output directory exists (unless dry-run)
     if not dry_run:
@@ -297,7 +457,7 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
         console.print(f"[blue]📥[/blue] Downloading: {url}")
 
     try:
-        html = await downloader.fetch(url)
+        fetch = await downloader.fetch_result(url)
     except Exception as e:
         console.print(f"[red]✗[/red] Failed to download: {e}")
         sys.exit(1)
@@ -305,11 +465,13 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
     if not quiet:
         console.print("[blue]🔄[/blue] Converting to markdown...")
 
-    markdown = converter.convert(html, base_url=url)
+    metadata = converter.extract_metadata(fetch.html)
+    markdown = converter.convert(fetch.html, base_url=fetch.final_url)
+    document = _render_output(fetch, markdown, metadata, settings)
 
     # Generate output filename
     output_dir = Path(settings.output.directory)
-    filename = url_to_filename(url) + settings.output.extension
+    filename = url_to_filename(fetch.final_url) + settings.output.extension
     output_path = output_dir / filename
 
     # Check if file exists
@@ -319,11 +481,14 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
         sys.exit(1)
 
     # Save output
-    output_path.write_text(markdown, encoding="utf-8")
+    output_path.write_text(document, encoding="utf-8")
 
     if not quiet:
         console.print(f"[green]✓[/green] Saved: {output_path}")
-    
+        if verbose:
+            console.print(f"[dim]    sha256: {compute_content_hash(markdown)[:16]}…  "
+                          f"status: {fetch.status_code}  fetched: {fetch.fetched_at}[/dim]")
+
     # Run QMD integration if enabled
     run_qmd_integration(url, output_dir, settings, quiet)
 
@@ -401,12 +566,24 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     output_dir = Path(settings.output.directory)
     saved_count = 0
     skipped_count = 0
+    failed: list[str] = []
+    manifest: list[dict] = []
 
-    async for page_url, html in crawler.crawl(url):
+    async for page_url, fetch in crawler.crawl(url):
         if not quiet:
             console.print(f"[blue]📥[/blue] Downloaded: {page_url}")
 
-        markdown = converter.convert(html, base_url=page_url)
+        try:
+            metadata = converter.extract_metadata(fetch.html)
+            markdown = converter.convert(fetch.html, base_url=fetch.final_url)
+            if not markdown.strip():
+                raise ValueError("conversion produced empty output")
+            document = _render_output(fetch, markdown, metadata, settings)
+        except Exception as e:
+            if not quiet:
+                console.print(f"[red]✗[/red] Failed to convert {page_url}: {e}")
+            failed.append(page_url)
+            continue
 
         # Generate output filename
         filename = url_to_filename(page_url, base_url=url) + settings.output.extension
@@ -420,11 +597,28 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
             continue
 
         # Save output
-        output_path.write_text(markdown, encoding="utf-8")
+        output_path.write_text(document, encoding="utf-8")
         saved_count += 1
+        manifest.append(
+            {
+                "url": page_url,
+                "file": filename,
+                "content_hash": compute_content_hash(markdown),
+                "fetched_at": fetch.fetched_at,
+                "status_code": fetch.status_code,
+                "title": metadata.get("title") or "",
+            }
+        )
 
         if not quiet:
             console.print(f"[green]✓[/green] Saved: {output_path}")
+
+    # Write crawl manifest for auditing / downstream bookkeeping
+    if manifest:
+        manifest_path = output_dir / "_manifest.json"
+        manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        if not quiet:
+            console.print(f"[dim]📋 Manifest: {manifest_path}[/dim]")
 
     if not quiet:
         console.print()
@@ -432,9 +626,16 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
         console.print(f"    Saved: {saved_count} files")
         if skipped_count > 0:
             console.print(f"    Skipped: {skipped_count} files (already exist)")
-    
+        if failed:
+            console.print(f"    [red]Failed: {len(failed)} pages[/red]")
+
     # Run QMD integration if enabled
     run_qmd_integration(url, output_dir, settings, quiet)
+
+    # Meaningful exit codes for schedulers: 0 = at least one page saved,
+    # 1 = nothing saved at all.
+    if saved_count == 0 and skipped_count == 0:
+        sys.exit(1)
 
 
 def main():

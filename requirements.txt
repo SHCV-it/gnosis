@@ -1,4 +1,4 @@
-# Gnosis dependencies
+# Gnosis core dependencies
 click>=8.0.0
 rich>=13.0.0
 httpx>=0.25.0
@@ -6,6 +6,5 @@ beautifulsoup4>=4.12.0
 lxml>=5.0.0
 pyyaml>=6.0.0
 
-# QMD integration dependencies
-torch>=2.0.0
-transformers>=4.30.0
+# Optional: QMD integration dependencies moved to requirements-qmd.txt
+# (install with: pip install -e .[qmd])

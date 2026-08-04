@@ -14,7 +14,7 @@ from urllib.parse import urljoin, urlparse, urlunparse
 from bs4 import BeautifulSoup
 
 from gnosis.config.settings import CrawlerSettings
-from gnosis.core.downloader import Downloader, DownloadError
+from gnosis.core.downloader import Downloader, DownloadError, FetchResult
 
 
 class Crawler:
@@ -106,18 +106,19 @@ class Crawler:
 
         return len(discovered_urls), discovered_urls, hit_max_limit
 
-    async def crawl(self, start_url: str) -> AsyncIterator[Tuple[str, str]]:
+    async def crawl(self, start_url: str) -> AsyncIterator[Tuple[str, FetchResult]]:
         """
         Crawl a website starting from the given URL.
 
-        Yields (url, html) tuples for each page discovered. Only pages
+        Yields (url, fetch_result) tuples for each page discovered. Only pages
         matching the same domain and path prefix are crawled.
 
         Args:
             start_url: The starting URL to crawl from.
 
         Yields:
-            Tuples of (url, html_content) for each page.
+            Tuples of (url, FetchResult) carrying HTML and provenance
+            metadata (final URL, status code, fetch timestamp, headers).
         """
         # Normalize the starting URL
         start_url = self._normalize_url(start_url)
@@ -146,20 +147,20 @@ class Crawler:
 
             # Download the page
             try:
-                html = await self.downloader.fetch(url)
+                fetch = await self.downloader.fetch_result(url)
             except DownloadError:
                 continue
 
             # Yield the page
             pages_yielded += 1
-            yield url, html
+            yield url, fetch
 
             # Don't discover links if at max depth
             if depth >= self.settings.max_depth:
                 continue
 
             # Extract links from the page
-            links = self._extract_links(html, url, base_domain, base_path)
+            links = self._extract_links(fetch.html, url, base_domain, base_path)
 
             # Add new links to queue
             for link in links:
@@ -242,8 +243,17 @@ class Crawler:
             if not href or href == "#" or href.startswith(("javascript:", "mailto:", "tel:")):
                 continue
 
-            # Resolve relative URLs
-            absolute_url = urljoin(page_url, href)
+            # Resolve relative URLs. Extensionless page URLs are treated as
+            # directory indexes (mirrors _get_base_path), so relative links
+            # resolve beneath them: without the trailing slash, urljoin would
+            # replace the last segment ('/en/latest' + 'x.html' -> '/en/x.html')
+            # and the link would fall outside the crawl scope.
+            base = page_url
+            if not base.endswith("/"):
+                last_segment = posixpath.basename(urlparse(base).path)
+                if "." not in last_segment:
+                    base += "/"
+            absolute_url = urljoin(base, href)
 
             # Normalize
             normalized = self._normalize_url(absolute_url)

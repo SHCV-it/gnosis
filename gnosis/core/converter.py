@@ -2,19 +2,24 @@
 HTML to Markdown converter.
 
 Converts HTML content to clean, LLM-friendly markdown with configurable
-tag exclusions and content extraction.
+tag exclusions, boilerplate stripping, and content extraction.
 """
 
+import html as html_lib
 import re
 from typing import Optional
 from urllib.parse import urljoin
 
-from bs4 import BeautifulSoup, NavigableString, Tag
+from bs4 import BeautifulSoup, Comment, NavigableString, Tag
 
 from gnosis.config.settings import ConverterSettings
 
 # Minimum character count for an element to be considered content
 MIN_CONTENT_THRESHOLD = 200
+
+# Class tokens that mark permalink anchors inside headings
+# (e.g. Sphinx/ReadTheDocs 'headerlink' anchors rendered as '#').
+_HEADING_ANCHOR_CLASSES = {"headerlink", "anchor", "heading-anchor", "permalink"}
 
 
 class HTMLToMarkdownConverter:
@@ -49,15 +54,32 @@ class HTMLToMarkdownConverter:
         """
         soup = BeautifulSoup(html, "lxml")
 
+        # Remove HTML comments. Comment nodes subclass NavigableString, so
+        # without this they leak into output as raw text (e.g. Confluence's
+        # '<!-- data-loadable-begin="..." -->' SSR markers).
+        for comment in soup.find_all(string=lambda s: isinstance(s, Comment)):
+            comment.extract()
+
         # Remove excluded tags
         for tag_name in self.settings.excluded_tags:
             for tag in soup.find_all(tag_name):
                 tag.decompose()
 
-        # Remove elements with excluded classes
+        # Remove elements with excluded classes (exact token match)
         for class_name in self.settings.strip_classes:
             for tag in soup.find_all(class_=class_name):
                 tag.decompose()
+
+        # Remove elements whose class tokens contain configured boilerplate
+        # words (catches namespaced classes like 'bd-sidebar-primary')
+        self._strip_by_class_words(soup)
+
+        # Remove permalink anchors inside headings ('# Quickstart#' artifact)
+        self._strip_heading_anchors(soup)
+
+        # Remove sticky-header clone tables (single-row tables duplicating
+        # the header of a following real table — Confluence/DataTables pattern)
+        self._dedupe_shadow_tables(soup)
 
         # Find main content area(s)
         content = self._find_content(soup)
@@ -87,9 +109,145 @@ class HTMLToMarkdownConverter:
 
         return markdown
 
+    def _strip_by_class_words(self, soup: BeautifulSoup) -> None:
+        """
+        Strip elements whose class tokens contain configured boilerplate words.
+
+        Each class token is split on '-' and '_' into words; the element is
+        stripped if any word matches the strip_class_words set. This catches
+        framework-namespaced boilerplate ('bd-sidebar-primary', 'site-toc')
+        while leaving content like 'research-content' untouched (the word
+        'research' != 'search').
+
+        Args:
+            soup: Parsed HTML document (modified in place).
+        """
+        words_config = {w.lower() for w in self.settings.strip_class_words}
+        if not words_config:
+            return
+
+        def has_boilerplate_word(class_attr) -> bool:
+            if not class_attr:
+                return False
+            tokens = class_attr if isinstance(class_attr, list) else [class_attr]
+            for token in tokens:
+                token_words = re.split(r"[-_]", str(token).lower())
+                if any(w in words_config for w in token_words):
+                    return True
+            return False
+
+        for tag in soup.find_all(class_=has_boilerplate_word):
+            tag.decompose()
+
+    def _strip_heading_anchors(self, soup: BeautifulSoup) -> None:
+        """
+        Remove permalink anchors inside headings.
+
+        Docs generators (Sphinx, mkdocs, etc.) embed '<a class="headerlink"
+        href="#...">#</a>' inside headings; without removal the '#' leaks
+        into the markdown heading text.
+
+        Args:
+            soup: Parsed HTML document (modified in place).
+        """
+        for heading in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6"]):
+            for anchor in heading.find_all("a"):
+                classes = {str(c).lower() for c in (anchor.get("class") or [])}
+                href = str(anchor.get("href", ""))
+                if classes & _HEADING_ANCHOR_CLASSES or href.startswith("#"):
+                    anchor.decompose()
+
+    def extract_metadata(self, html: str) -> dict:
+        """
+        Extract page metadata from HTML head and open-graph tags.
+
+        Args:
+            html: Raw HTML document.
+
+        Returns:
+            Dict with title, author, language, description, site_name,
+            published_time, modified_time (missing values are empty strings).
+        """
+        soup = BeautifulSoup(html, "lxml")
+
+        def meta(**attrs) -> str:
+            tag = soup.find("meta", attrs=attrs)
+            if tag and tag.get("content"):
+                return html_lib.unescape(str(tag["content"]).strip())
+            return ""
+
+        title = meta(property="og:title")
+        if not title:
+            title_tag = soup.find("title")
+            if title_tag and title_tag.get_text():
+                title = html_lib.unescape(title_tag.get_text().strip())
+
+        language = ""
+        html_tag = soup.find("html")
+        if html_tag and html_tag.get("lang"):
+            language = str(html_tag["lang"]).strip()
+        if not language:
+            language = meta(property="og:locale")
+
+        return {
+            "title": title,
+            "author": meta(name="author")
+            or meta(property="article:author")
+            or meta(name="dc.creator"),
+            "language": language,
+            "description": meta(name="description") or meta(property="og:description"),
+            "site_name": meta(property="og:site_name"),
+            "published_time": meta(property="article:published_time"),
+            "modified_time": meta(property="article:modified_time"),
+        }
+
+    def _dedupe_shadow_tables(self, soup: BeautifulSoup) -> None:
+        """
+        Remove single-row tables that duplicate the header row of a real table.
+
+        Sticky-header implementations (Confluence 'pm-table-sticky-wrapper',
+        DataTables fixed headers, etc.) clone the header row into a separate
+        single-row table. Structurally: a table with exactly one row whose
+        cells equal the first row of another, larger table is a shadow copy.
+
+        Args:
+            soup: Parsed HTML document (modified in place).
+        """
+        tables = soup.find_all("table")
+        if len(tables) < 2:
+            return
+
+        def first_row_signature(table: Tag) -> tuple:
+            row = table.find("tr")
+            if not row:
+                return ()
+            return tuple(
+                cell.get_text(strip=True) for cell in row.find_all(["th", "td"])
+            )
+
+        real_signatures = set()
+        for table in tables:
+            if len(table.find_all("tr")) > 1:
+                sig = first_row_signature(table)
+                if sig:
+                    real_signatures.add(sig)
+
+        for table in tables:
+            rows = table.find_all("tr")
+            if len(rows) == 1:
+                sig = first_row_signature(table)
+                if sig and sig in real_signatures:
+                    table.decompose()
+
     def _find_content(self, soup: BeautifulSoup):
         """
-        Find all main content areas of the page.
+        Find the main content area(s) of the page.
+
+        Content selectors are tried in order; the first selector that yields
+        at least one element above the minimum content threshold wins. This
+        lets precise, platform-specific selectors (e.g. '.markdown-body',
+        '.ak-renderer-document') take precedence over generic landmarks
+        ('main', '#content') that often wrap navigation chrome.
 
         Args:
             soup: Parsed HTML document.
@@ -108,6 +266,13 @@ class HTMLToMarkdownConverter:
             matches = soup.select(selector)
             if self.verbose and matches:
                 print(f"[Gnosis] Selector '{selector}' found {len(matches)} match(es)")
+
+            if content_elements:
+                # A previous selector already won — selectors are ordered by
+                # precedence, so stop looking.
+                if self.verbose and matches:
+                    print(f"[Gnosis]   (ignored — content already found)")
+                continue
 
             for element in matches:
                 # Skip if already seen
@@ -138,9 +303,10 @@ class HTMLToMarkdownConverter:
                 seen_elements.add(id(element))
 
         if self.verbose:
-            print(f"[Gnosis] Found {len(content_elements)} content candidate(s) before deduplication")
+            print(f"[Gnosis] Found {len(content_elements)} content candidate(s) before deduplication")  # noqa: E501
 
-        # Deduplicate: remove nested elements
+        # Deduplicate: remove nested elements (same-selector matches can
+        # nest, e.g. multiple 'article' elements inside each other)
         if len(content_elements) > 1:
             filtered_elements = []
             for element in content_elements:
@@ -191,6 +357,10 @@ class HTMLToMarkdownConverter:
         Returns:
             Markdown string.
         """
+        # HTML comments carry no content (SSR markers, template hints)
+        if isinstance(element, Comment):
+            return ""
+
         if isinstance(element, NavigableString):
             text = str(element)
             # Collapse whitespace but preserve single spaces
@@ -274,6 +444,10 @@ class HTMLToMarkdownConverter:
         if tag_name == "img" and self.settings.include_images:
             src = element.get("src", "")
             alt = element.get("alt", "")
+            # Skip data-URI images: almost always 1x1 spacers/tracking pixels,
+            # and they bloat output with base64 noise.
+            if src.startswith("data:"):
+                return ""
             if src:
                 if self.settings.absolute_urls and base_url:
                     src = urljoin(base_url, src)
@@ -430,16 +604,21 @@ class HTMLToMarkdownConverter:
             header_row = thead.find("tr")
             if header_row:
                 cells = header_row.find_all(["th", "td"])
-                headers = [self._convert_children(cell, base_url).strip() for cell in cells]
+                headers = [self._convert_table_cell(cell, base_url) for cell in cells]
                 rows.append(headers)
 
         # Find body rows
         tbody = table.find("tbody") or table
         for tr in tbody.find_all("tr", recursive=False):
             cells = tr.find_all(["td", "th"])
-            row = [self._convert_children(cell, base_url).strip() for cell in cells]
+            row = [self._convert_table_cell(cell, base_url) for cell in cells]
             if row and any(row):  # Skip empty rows
                 rows.append(row)
+
+        # Some generators (e.g. Confluence) repeat the header row as the
+        # first body row — drop the duplicate.
+        if len(rows) >= 2 and rows[0] == rows[1]:
+            rows.pop(1)
 
         if not rows:
             return ""
@@ -471,6 +650,27 @@ class HTMLToMarkdownConverter:
 
         return "\n\n" + "\n".join(result) + "\n\n"
 
+    def _convert_table_cell(self, cell: Tag, base_url: Optional[str] = None) -> str:
+        """
+        Convert a table cell to single-line markdown.
+
+        Raw newlines break markdown table rows, so multi-paragraph cells are
+        joined with <br> (GFM-compatible). Pipe characters are escaped.
+
+        Args:
+            cell: The td/th element.
+            base_url: Base URL for resolving relative links.
+
+        Returns:
+            Single-line cell markdown.
+        """
+        text = self._convert_children(cell, base_url).strip()
+        # Collapse runs of whitespace/newlines into <br> separators
+        text = re.sub(r"(\s*\n\s*)+", "<br>", text)
+        # Escape pipes so they don't split the cell
+        text = text.replace("|", "\\|")
+        return text.strip()
+
     def _clean_markdown(self, markdown: str) -> str:
         """
         Clean up the generated Markdown.
@@ -481,8 +681,8 @@ class HTMLToMarkdownConverter:
         Returns:
             Cleaned markdown string.
         """
-        # Remove excessive blank lines (more than 2 consecutive)
-        markdown = re.sub(r"\n{4,}", "\n\n\n", markdown)
+        # Remove excessive blank lines (keep at most one blank line)
+        markdown = re.sub(r"\n{3,}", "\n\n", markdown)
 
         # Remove trailing whitespace from lines
         lines = [line.rstrip() for line in markdown.split("\n")]

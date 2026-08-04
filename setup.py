@@ -14,9 +14,21 @@ def read_requirements(filename):
         ]
 
 
+def read_qmd_requirements():
+    """Read optional QMD integration requirements."""
+    qmd_file = Path(__file__).parent / "requirements-qmd.txt"
+    if not qmd_file.exists():
+        return []
+    return [
+        line.strip()
+        for line in qmd_file.read_text().splitlines()
+        if line.strip() and not line.startswith("#")
+    ]
+
+
 setup(
     name="gnosis",
-    version="1.0.0",
+    version="1.1.0",
     author="Steffen Hoehne",
     author_email="steffen.hoehne@shcv.it",
     description="Website to Markdown converter for LLM knowledge bases",
@@ -39,6 +51,10 @@ setup(
     ],
     python_requires=">=3.12",
     install_requires=read_requirements("requirements.txt"),
+    extras_require={
+        # Heavy local-LLM dependencies for the --qmd-index pipeline
+        "qmd": read_qmd_requirements(),
+    },
     entry_points={
         "console_scripts": [
             "gnosis=gnosis.cli.main:main",
