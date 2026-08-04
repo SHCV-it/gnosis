@@ -1,12 +1,9 @@
 """
 Integration modules for external tools and services.
 
-This package provides integration with:
-- QMD knowledge base system
-- LLM services for content analysis
+Imports are lazy — heavy dependencies (torch, transformers) required only
+by the QMD integration are not loaded until --qmd-index is used. Install
+the [qmd] extra to enable: pip install gnosis-markdown[qmd]
 """
 
-from gnosis.integrations.llm import LLMContextGenerator
-from gnosis.integrations.qmd import QMDIntegrator
-
-__all__ = ["LLMContextGenerator", "QMDIntegrator"]
+__all__: list[str] = []

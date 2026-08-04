@@ -28,7 +28,7 @@ def read_qmd_requirements():
 
 setup(
     name="gnosis",
-    version="1.1.0",
+    version="1.1.1",
     author="Steffen Hoehne",
     author_email="steffen.hoehne@shcv.it",
     description="Website to Markdown converter for LLM knowledge bases",
@@ -46,7 +46,6 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "Intended Audience :: Information Technology",
-        "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.12",

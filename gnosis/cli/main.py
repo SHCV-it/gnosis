@@ -24,8 +24,6 @@ from gnosis.core.downloader import Downloader
 from gnosis.core.converter import HTMLToMarkdownConverter
 from gnosis.core.crawler import Crawler
 from gnosis.core.provenance import build_frontmatter, compute_content_hash, render_document
-from gnosis.integrations.llm import LLMContextGenerator
-from gnosis.integrations.qmd import QMDIntegrator, QMDNotFoundError, QMDCommandError
 
 console = Console()
 
@@ -376,6 +374,10 @@ def run_qmd_integration(
     """
     if not settings.qmd.enabled:
         return
+
+    # Lazy imports — torch/transformers are heavy and optional
+    from gnosis.integrations.llm import LLMContextGenerator
+    from gnosis.integrations.qmd import QMDIntegrator, QMDNotFoundError, QMDCommandError
     
     try:
         if not quiet:
