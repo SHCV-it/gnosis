@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gnosis-markdown"
+version = "1.1.0"
+description = "Website to Markdown converter with provenance frontmatter for LLM knowledge bases"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+authors = [
+    {name = "Steffen Hoehne", email = "steffen.hoehne@shcv.it"},
+]
+keywords = ["markdown", "web-scraping", "crawler", "html-to-markdown", "knowledge-base", "llm"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Text Processing :: Markup",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Documentation",
+]
+dependencies = [
+    "click>=8.0.0",
+    "rich>=13.0.0",
+    "httpx>=0.25.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=5.0.0",
+    "pyyaml>=6.0.0",
+]
+
+[project.optional-dependencies]
+qmd = [
+    "torch>=2.0.0",
+    "transformers>=4.30.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/SHCV-it/gnosis"
+Repository = "https://github.com/SHCV-it/gnosis"
+Issues = "https://github.com/SHCV-it/gnosis/issues"
+Changelog = "https://github.com/SHCV-it/gnosis/blob/main/CHANGELOG.md"
+
+[project.scripts]
+gnosis = "gnosis.cli.main:main"
+
+[tool.setuptools.packages.find]
+exclude = ["tests", "tests.*"]
+
+[tool.setuptools.package-data]
+gnosis = ["config/*.yaml"]

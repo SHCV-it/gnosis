@@ -566,8 +566,10 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     output_dir = Path(settings.output.directory)
     saved_count = 0
     skipped_count = 0
+    duplicate_count = 0
     failed: list[str] = []
     manifest: list[dict] = []
+    seen_hashes: set[str] = set()
 
     async for page_url, fetch in crawler.crawl(url):
         if not quiet:
@@ -578,6 +580,13 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
             markdown = converter.convert(fetch.html, base_url=fetch.final_url)
             if not markdown.strip():
                 raise ValueError("conversion produced empty output")
+            content_hash = compute_content_hash(markdown)
+            if content_hash in seen_hashes:
+                duplicate_count += 1
+                if not quiet:
+                    console.print(f"[dim]⏭  Skipped (duplicate): {page_url}[/dim]")
+                continue
+            seen_hashes.add(content_hash)
             document = _render_output(fetch, markdown, metadata, settings)
         except Exception as e:
             if not quiet:
@@ -603,7 +612,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
             {
                 "url": page_url,
                 "file": filename,
-                "content_hash": compute_content_hash(markdown),
+                "content_hash": content_hash,
                 "fetched_at": fetch.fetched_at,
                 "status_code": fetch.status_code,
                 "title": metadata.get("title") or "",
@@ -626,6 +635,8 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
         console.print(f"    Saved: {saved_count} files")
         if skipped_count > 0:
             console.print(f"    Skipped: {skipped_count} files (already exist)")
+        if duplicate_count > 0:
+            console.print(f"    [dim]Skipped: {duplicate_count} duplicates (same content)[/dim]")
         if failed:
             console.print(f"    [red]Failed: {len(failed)} pages[/red]")
 
