@@ -6,9 +6,9 @@
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/gnosis/"><img alt="PyPI" src="https://img.shields.io/badge/python-3.12+-blue"></a>
+  <a href="https://pypi.org/project/gnosis-markdown/"><img alt="PyPI" src="https://img.shields.io/pypi/v/gnosis-markdown?color=blue"></a>
+  <a href="https://pypi.org/project/gnosis-markdown/"><img alt="Python" src="https://img.shields.io/pypi/pyversions/gnosis-markdown?color=blue"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
-  <a href="https://github.com/SHCV-it/gnosis"><img alt="Version" src="https://img.shields.io/badge/version-1.1.0-blue"></a>
 </p>
 
 ---
@@ -48,19 +48,23 @@ bookkeeping, no hidden state. Every file is self-describing.
 
 ## Installation
 
-Requires **Python 3.12+**.
+```bash
+pip install gnosis-markdown
+```
+
+Requires **Python 3.12+**. Optional QMD integration (pulls torch + transformers):
+
+```bash
+pip install gnosis-markdown[qmd]
+```
+
+### From source
 
 ```bash
 git clone https://github.com/SHCV-it/gnosis.git
 cd gnosis
-python -m venv venv && source venv/bin/activate
-pip install -e .
-```
-
-Optional, only if you use `--qmd-index` (pulls torch + transformers):
-
-```bash
-pip install -e .[qmd]
+pip install -e .          # core
+pip install -e .[qmd]     # with QMD integration
 ```
 
 ## Quick start
@@ -282,10 +286,9 @@ Everything is configurable — see [`config/default.yaml`](config/default.yaml).
 ```bash
 git clone https://github.com/SHCV-it/gnosis.git
 cd gnosis
-python -m venv venv && source venv/bin/activate
 pip install -e . pytest python-frontmatter
 
-# Run the test suite (offline — only localhost fixtures)
+# Run tests (offline — only localhost fixtures)
 python -m pytest tests/ -q -v
 ```
 
