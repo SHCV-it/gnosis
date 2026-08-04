@@ -1,36 +1,54 @@
 # Gnosis
 
-**Website → clean, provenance-stamped Markdown.** Point gnosis at a URL and get
-LLM-friendly markdown files with a YAML frontmatter block recording exactly
-where the content came from, when it was fetched, and how to verify it.
+<p align="center">
+  <strong>Website → clean, provenance-stamped Markdown.</strong><br>
+  <em>Built for LLM knowledge bases, documentation pipelines, and audit-ready content archives.</em>
+</p>
 
-Built for feeding knowledge bases, documentation pipelines, and LLM context
-stores — where "which page did this come from, and has it changed?" is a
-question you should never have to answer by hand.
+<p align="center">
+  <a href="https://pypi.org/project/gnosis/"><img alt="PyPI" src="https://img.shields.io/badge/python-3.12+-blue"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
+  <a href="https://github.com/SHCV-it/gnosis"><img alt="Version" src="https://img.shields.io/badge/version-1.1.0-blue"></a>
+</p>
+
+---
+
+Point gnosis at a URL and get clean, LLM-friendly Markdown files with a **YAML
+provenance frontmatter block** on every file — recording exactly where the
+content came from, when it was fetched, and how to verify it. No external
+bookkeeping, no hidden state. Every file is self-describing.
+
+## Table of contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Provenance: the contract](#provenance-the-contract)
+- [Authenticated fetching](#authenticated-fetching)
+- [CLI reference](#cli-reference)
+- [Configuration reference](#configuration-reference)
+- [Exit codes](#exit-codes)
+- [How clean is the output?](#how-clean-is-the-output)
+- [Development & testing](#development--testing)
+- [License](#license)
 
 ## Features
 
-- **Single page or full site** — one URL, or crawl every page under a path with `--all`
-- **Provenance frontmatter by default** — every file records source URL, fetch
-  timestamp (UTC), SHA-256 content hash, HTTP status, page metadata
-  (title/author/language), and ETag/Last-Modified when the server provides them
-- **Authentication built in** — Bearer tokens, HTTP Basic (works with
-  Confluence Cloud API tokens), or arbitrary headers. Secrets always come from
-  environment variables, never from the command line or config files
-- **Clean extraction** — main-content detection with precedence-ordered
-  selectors, boilerplate stripping (sidebars, breadcrumbs, cookie banners,
-  permalinks), and framework-aware fixes for Confluence, ReadTheDocs/Sphinx,
-  and GitHub-style pages
-- **Tables that survive** — GFM-compatible output: multi-paragraph cells joined
-  with `<br>`, pipes escaped, sticky-header clone tables deduplicated
-- **Politeness** — configurable per-request delay, retries with exponential
-  backoff, robots-aware design
-- **Scheduler-friendly** — headless CLI, meaningful exit codes, JSON crawl
-  manifest; drops straight into cron, n8n, Airflow, or a CI job
-- **Optional QMD integration** — index output into a QMD knowledge base with
-  local-LLM context generation (`pip install gnosis[qmd]`)
+| Feature | Description |
+|---|---|
+| **Single page or full site** | One URL, or crawl every page under a path with `--all` |
+| **Provenance frontmatter** | Every file records `url`, `fetched_at` (UTC), SHA-256 `content_hash`, `status_code`, page metadata (title/author/language), and caching headers when the server sends them |
+| **Authentication built-in** | Bearer tokens, HTTP Basic (Confluence Cloud API tokens), or arbitrary headers — secrets **always** from environment variables |
+| **Clean extraction** | Main-content detection with ordered selectors, class-word boilerplate stripping (sidebars, breadcrumbs, cookie banners, permalink anchors), and framework-aware fixes for Confluence, Sphinx/RTD, and GitHub-style pages |
+| **Valid GFM tables** | Multi-paragraph cells joined with `<br>`, pipes escaped, sticky-header clone tables removed — tables survive ingestion |
+| **Scalable crawling** | Configurable concurrent fetches, politeness delay, retries with backoff, robots-aware |
+| **Scheduler-friendly** | Headless CLI, meaningful exit codes, JSON crawl manifest — drops into cron, n8n, Airflow, CI |
+| **Metadata extraction** | Title (entity-unescaped), author, language, description, Open Graph fields |
+| **Optional QMD integration** | Index output into a QMD knowledge base with local-LLM context generation (`pip install gnosis[qmd]`) |
 
 ## Installation
+
+Requires **Python 3.12+**.
 
 ```bash
 git clone https://github.com/SHCV-it/gnosis.git
@@ -45,99 +63,107 @@ Optional, only if you use `--qmd-index` (pulls torch + transformers):
 pip install -e .[qmd]
 ```
 
-Requires Python 3.12+.
-
 ## Quick start
 
 ```bash
-# One page
+# One page → one markdown file with provenance
 gnosis https://docs.python.org/3/tutorial/
 
-# Whole section of a docs site
+# Crawl an entire section of a docs site
 gnosis https://docs.python.org/3/tutorial/ --all -o ./python-docs/
 
-# Preview scope without downloading
+# Preview how many pages would be crawled (no downloads)
 gnosis https://docs.python.org/3/tutorial/ --all --dry-run
+
+# Faster crawl with parallel fetches
+gnosis https://docs.example.com/ --all --config myconfig.yaml
 ```
 
-Output for `https://trafilatura.readthedocs.io/en/latest/quickstart.html`:
+## Provenance: the contract
 
-```markdown
+Every file gnosis writes is self-describing. Default frontmatter:
+
+```yaml
 ---
 title: Quickstart — Trafilatura 2.2.0 documentation
 url: https://trafilatura.readthedocs.io/en/latest/quickstart.html
 fetched_at: '2026-08-04T10:24:17Z'
-content_hash: 1549512c3f441ce691fac68a9fcdcb87497cb187a71afe2503bb13465ea716fd
+content_hash: 1549512c...16fd
 status_code: 200
 generator: gnosis/1.1.0
 language: en
 etag: '"61e917f4cd107c3bce6182b633819fcf"'
 last_modified: Fri, 31 Jul 2026 16:07:37 GMT
 ---
-
-# Quickstart
-
-Trafilatura is a tool that simplifies the process of turning raw HTML into
-structured, meaningful data. ...
 ```
 
-## Provenance: the contract
+| Field | Required | Description |
+|---|---|---|
+| `title` | Always | Page title (from `og:title` or `<title>`, HTML entities unescaped) |
+| `url` | Always | Final URL after redirects (`requested_url` added if it differs) |
+| `fetched_at` | Always | UTC fetch timestamp, ISO 8601 |
+| `content_hash` | Always | SHA-256 of the markdown body — use for dedup/change detection |
+| `status_code` | Always | HTTP status of the final response |
+| `generator` | Always | Gnosis version that produced this file |
+| `language` | If present | From `<html lang>` or `og:locale` |
+| `author` | If present | From `<meta name=author>`, `article:author`, or `dc.creator` |
+| `description` | If present | From `<meta name=description>` or `og:description` |
+| `site_name` | If present | From `og:site_name` |
+| `published_time` | If present | From `article:published_time` |
+| `modified_time` | If present | From `article:modified_time` |
+| `etag` | If sent | Response `ETag` header |
+| `last_modified` | If sent | Response `Last-Modified` header |
+| `requested_url` | If redirected | Original URL before redirects |
 
-Every file gnosis writes is self-describing. Default frontmatter fields:
-
-| Field | Meaning |
-|---|---|
-| `title` | Page title (`og:title` preferred, entities unescaped) |
-| `url` | Final URL after redirects (`requested_url` added if different) |
-| `fetched_at` | UTC fetch timestamp, ISO 8601 |
-| `content_hash` | SHA-256 of the markdown body — dedup/change detection |
-| `status_code` | HTTP status of the final response |
-| `language` | `<html lang>` or `og:locale`, when present |
-| `author`, `description`, `site_name` | From meta/OG tags, when present |
-| `published_time`, `modified_time` | From `article:*` tags, when present |
-| `etag`, `last_modified` | Response caching headers, when sent |
-| `generator` | gnosis version that produced the file |
-
-Add your own constant fields (tags, owners, downstream routing hints) per run
-or per config — they merge in without ever overriding the core fields:
+Add your own constant fields per run (`--frontmatter`) or per config
+(`output.frontmatter_extra`) — custom keys never override the core provenance
+fields above:
 
 ```bash
 gnosis https://example.com/docs --frontmatter 'tags: [customs, passar]' --frontmatter 'owner: kb-team'
 ```
 
 The frontmatter is standard YAML between `---` fences: parseable by
-python-frontmatter, Jekyll, Hugo, Obsidian, and any downstream pipeline.
+python-frontmatter, Jekyll, Hugo, Obsidian, and any downstream knowledge
+pipeline.
 
-## Authenticated fetching (Confluence Cloud & co.)
+Opt out per run with `--no-frontmatter` or globally in config:
+```yaml
+output:
+  frontmatter: false
+```
 
-Secrets are read from **environment variables only** — never CLI arguments
-(they leak into shell history) and never committed config files.
+## Authenticated fetching
+
+Secrets are read from **environment variables only**. They are never passed as
+plain CLI arguments (which leak into shell history and process tables) and
+never committed in config files.
 
 ### Confluence Cloud with a Personal Access Token
 
-Confluence Cloud API tokens use HTTP Basic with `email:api-token`:
-
 ```bash
+# Set up a PAT at https://id.atlassian.com/manage/api-tokens
 export CONFLUENCE_PAT="your-api-token"
-gnosis "https://your-domain.atlassian.net/wiki/spaces/SPACE/pages/123456789/Page+Title" \
+
+gnosis "https://your-domain.atlassian.net/wiki/spaces/SPACE/pages/PAGE_ID" \
   --basic-user you@example.com \
   --basic-token-env CONFLUENCE_PAT
 ```
 
-### Bearer token
+### Bearer token (authenticated API docs, internal tools)
 
 ```bash
 export MY_API_TOKEN="..."
 gnosis https://internal.example.com/docs --bearer-token-env MY_API_TOKEN
 ```
 
-### Arbitrary headers
+### Custom headers
 
 ```bash
-gnosis https://example.com --header "X-Api-Key: ${MY_KEY}" --header "X-Team: docs"
+gnosis https://example.com --header "X-API-Key: ${MY_KEY}" --header "X-Team: docs"
 ```
 
-### Via config file
+### Via config file (multi-run / CI)
 
 ```yaml
 downloader:
@@ -147,48 +173,78 @@ downloader:
     password: "${CONFLUENCE_PAT}"    # ${ENV_VAR} expanded at load time
 ```
 
-## How clean is the output?
-
-Gnosis is opinionated about boilerplate. By default it:
-
-- strips `script/style/nav/footer/aside/form/template/...` tags and HTML
-  comments (including SSR markers like Confluence's `data-loadable` comments)
-- removes elements matching exact `strip_classes` tokens **and** boilerplate
-  *words* (`sidebar`, `toc`, `breadcrumb`, `cookie`, …) inside namespaced class
-  names — so `bd-sidebar-primary` goes, but `research-content` stays
-- removes permalink anchors inside headings (`# Quickstart#` → `# Quickstart`)
-- picks the main content area by precedence-ordered selectors
-  (`.markdown-body`, `.ak-renderer-document`, `.wiki-content`, … before
-  `main`/`#content`), so platform chrome never leaks into content
-- converts tables to valid GFM: multi-line cells joined with `<br>`, `|`
-  escaped, duplicate/sticky-header rows removed
-- resolves relative links to absolute URLs; skips `data:`-URI images
-  (spacers/tracking pixels)
-
-Everything above is configurable — see [`config/default.yaml`](config/default.yaml).
-
 ## CLI reference
 
 ```
 gnosis URL [OPTIONS]
-
-  -a, --all                     Crawl all child pages under the URL path
-  -n, --dry-run                 Discover and count pages only (requires --all)
-  -o, --output DIR              Output directory
-  -c, --config FILE             YAML configuration file
-  -f, --overwrite               Overwrite existing files
-  -q, --quiet                   Suppress progress output
-  -v, --verbose                 Show detailed conversion diagnostics
-      --no-frontmatter          Write bare markdown without provenance block
-      --frontmatter KEY: VALUE  Extra constant frontmatter field (repeatable)
-      --header NAME: VALUE      Extra request header, ${ENV_VAR} expanded (repeatable)
-      --bearer-token-env VAR    Bearer token from environment variable
-      --basic-user USER         HTTP Basic username (with --basic-token-env)
-      --basic-token-env VAR     HTTP Basic password/token from environment variable
-      --qmd-index               Index output into QMD (requires [qmd] extra)
 ```
 
-### Exit codes
+| Flag | Description |
+|---|---|
+| `-a, --all` | Crawl all child pages under the URL path |
+| `-n, --dry-run` | Discover and count pages only (requires `--all`) |
+| `-o, --output DIR` | Output directory (default: `./`) |
+| `-c, --config FILE` | Path to YAML configuration file |
+| `-f, --overwrite` | Overwrite existing output files |
+| `-q, --quiet` | Suppress progress output |
+| `-v, --verbose` | Show detailed conversion diagnostics |
+| `--no-frontmatter` | Write bare markdown without provenance block |
+| `--frontmatter KEY: VALUE` | Extra constant frontmatter field (repeatable) |
+| `--header NAME: VALUE` | Extra request header, `${ENV_VAR}` expanded (repeatable) |
+| `--bearer-token-env VAR` | Bearer token from environment variable |
+| `--basic-user USER` | HTTP Basic username (requires `--basic-token-env`) |
+| `--basic-token-env VAR` | HTTP Basic password/token from environment variable |
+| `--qmd-index` | Index output into QMD (requires `[qmd]` extra) |
+
+## Configuration reference
+
+Copy [`config/default.yaml`](config/default.yaml) and pass it with `-c`.
+Full reference:
+
+```yaml
+# ── Downloader ────────────────────────────
+downloader:
+  timeout: 30                # Request timeout (seconds)
+  retries: 3                 # Retries on 5xx / network errors
+  user_agent: "Gnosis/1.1"   # User-Agent header
+  rate_limit_ms: 500          # Minimum delay between requests (0 = no limit)
+  respect_robots: true        # Obey robots.txt (future)
+  headers: {}                 # Extra HTTP headers (${ENV_VAR} expanded)
+  auth:                       # Optional: bearer | basic | header
+    type: bearer
+    token: "${MY_API_TOKEN}"
+
+# ── Crawler ───────────────────────────────
+crawler:
+  max_depth: 10              # Crawl depth from seed URL
+  max_pages: 500             # Stop after this many pages
+  concurrent_requests: 5     # Parallel fetch batch size (1 = sequential)
+
+# ── Converter ─────────────────────────────
+converter:
+  excluded_tags: [...]        # HTML tags stripped before conversion
+  content_selectors: [...]    # Tried in order; first match ≥ 200 chars wins
+  strip_classes: [...]        # Exact class-token matches to remove
+  strip_class_words: [...]    # Word-level matches inside class names
+  include_images: true        # Emit <img> as ![alt](src)
+  absolute_urls: true         # Resolve relative links to absolute URLs
+
+# ── Output ─────────────────────────────────
+output:
+  directory: "./"             # Where .md files go
+  overwrite: false            # Skip existing files unless true
+  extension: ".md"            # Output file extension
+  frontmatter: true           # Write YAML provenance block
+  frontmatter_extra: {}       # Constant fields added to every file
+
+# ── QMD (optional) ──────────────────────────
+qmd:
+  enabled: false              # Enable QMD knowledge base indexing
+  llm_model: "Qwen/Qwen3-0.6B"  # HuggingFace model for context generation
+  llm_device: "cpu"           # cpu | cuda | auto
+```
+
+## Exit codes
 
 | Code | Meaning |
 |---|---|
@@ -197,54 +253,86 @@ gnosis URL [OPTIONS]
 | `130` | Interrupted (Ctrl-C) |
 
 In `--all` mode a `_manifest.json` is written to the output directory listing
-every page with its URL, file, content hash, fetch timestamp, and status —
-suitable for schedulers and downstream bookkeeping.
+every page with `url`, `file`, `content_hash`, `fetched_at`, `status_code`, and
+`title` — ready for schedulers and downstream audit.
 
-## Configuration
+## How clean is the output?
 
-All defaults live in [`config/default.yaml`](config/default.yaml) — copy it and
-pass with `-c`. Highlights:
+Gnosis is opinionated about boilerplate. By default it:
 
-```yaml
-downloader:
-  timeout: 30
-  retries: 3
-  rate_limit_ms: 500          # politeness delay between requests
-  headers: {}                 # extra headers, ${ENV_VAR} expanded
-  auth:                       # bearer | basic | header
-    type: bearer
-    token: "${MY_API_TOKEN}"
+- **strips** script/style/nav/footer/aside/form/template tags and HTML comments
+  (including Confluence's `<!-- data-loadable-begin=... -->` SSR markers)
+- **removes** elements matching exact `strip_classes` tokens AND boilerplate
+  *words* (`sidebar`, `toc`, `breadcrumb`, `cookie`, `headerlink`, `sourcelink`, …)
+  inside namespaced class names — `bd-sidebar-primary` is gone, but `research-content`
+  stays
+- **cleans** permalink anchors from headings (`# Quickstart#` → `# Quickstart`)
+- **picks** the main content by precedence-ordered selectors
+  (`.markdown-body`, `.ak-renderer-document`, `.wiki-content`, … before `main`/`#content`)
+- **converts** tables to valid GFM: multi-line cells joined with `<br>`, `|`
+  escaped, duplicate/sticky-header rows removed
+- **resolves** relative links to absolute URLs; skips `data:`-URI images
+  (spacers/tracking pixels)
+- **unescapes** HTML entities in titles (`&#8212;` → `—`)
 
-crawler:
-  max_depth: 10
-  max_pages: 500
+Everything is configurable — see [`config/default.yaml`](config/default.yaml).
 
-converter:
-  content_selectors: [...]    # tried in order, first substantial match wins
-  strip_classes: [...]        # exact class-token matches
-  strip_class_words: [...]    # word-level matches inside class names
-
-output:
-  frontmatter: true           # provenance block on every file
-  frontmatter_extra: {}       # constant fields added to every file
-```
-
-## Development
+## Development & testing
 
 ```bash
+git clone https://github.com/SHCV-it/gnosis.git
+cd gnosis
+python -m venv venv && source venv/bin/activate
 pip install -e . pytest python-frontmatter
-python -m pytest tests/ -q
+
+# Run the test suite (offline — only localhost fixtures)
+python -m pytest tests/ -q -v
 ```
 
-The test suite covers converter quality (comment/anchor/boilerplate stripping,
-table handling, shadow-table dedup), provenance generation, auth header
-handling against a local echo server, crawler link resolution, and CLI
-end-to-end behavior — all offline except localhost.
+### Project structure
+
+```
+gnosis/
+  cli/           Click CLI (single page, crawl, dry-run, manifest)
+  config/        YAML loading + typed settings dataclass
+  core/
+    downloader   Async HTTP client, auth, retries, FetchResult
+    converter    HTML → Markdown, boilerplate stripping, metadata extraction
+    crawler      BFS crawler with concurrent batch fetching
+    provenance   Frontmatter generation, content_hash, render_document
+  integrations/  QMD pipeline (optional, heavy deps)
+```
+
+The test suite covers converter quality (comment/anchor/boilerplate/table
+handling, shadow-table dedup, metadata), provenance generation (fields,
+round-trip parsing, extras merging), auth header injection (3 schemes),
+crawler link resolution, and CLI end-to-end behavior. Runs entirely offline.
+
+## Contributing
+
+Contributions are welcome. Please open an issue first to discuss what you'd
+like to change.
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing`)
+3. Run the tests (`python -m pytest tests/ -q`)
+4. Commit your changes with clear messages
+5. Push and open a pull request against `main`
+
+## Related projects
+
+Gnosis is designed to feed LLM knowledge bases. Pair it with:
+
+- **[Tianlu](https://github.com/SHCV-it/Tianlu)** — self-maintaining knowledge
+  wiki; gnosis output maps to its inbox format with a 15-line adapter
+- **n8n / cron / Airflow** — schedule gnosis runs and pipe results into your
+  documentation pipeline
+- **QMD** — local vector search via the `--qmd-index` flag
 
 ## License
 
-MIT License — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
 
-## Author
+---
 
-Steffen Hoehne, [SHCV.IT](https://shcv.it)
+**Author:** Steffen Hoehne, [SHCV.IT](https://shcv.it)

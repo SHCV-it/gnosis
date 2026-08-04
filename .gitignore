@@ -1,4 +1,4 @@
-# Byte-compiled / optimized / DLL files
+# Development artifacts
 __pycache__/
 *.py[cod]
 *$py.class
@@ -26,9 +26,10 @@ dist/
 .coverage
 htmlcov/
 
-# Output files
-*.md
-!README.md
+# Generated output (workflow outputs, not source)
+output/
+out/
+_manifest.json
 
 # OS files
 .DS_Store

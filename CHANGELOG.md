@@ -1,0 +1,58 @@
+# Changelog
+
+## [1.1.0] - 2026-08-04
+
+### Added
+- **Provenance frontmatter on every output file** (on by default, `--no-frontmatter`
+  to opt out): `title`, `url`, `fetched_at` (UTC ISO 8601), `content_hash`
+  (SHA-256 of body), `status_code`, `language`, `author`, `description`,
+  `site_name`, `published_time`/`modified_time`, `etag`/`last_modified`,
+  `generator`. Standard YAML, parseable by python-frontmatter/Jekyll/Hugo.
+- **Authentication**: Bearer, HTTP Basic (Confluence Cloud PAT pattern:
+  email + API token), and arbitrary header auth. Secrets are read from
+  environment variables only — via `--bearer-token-env`,
+  `--basic-user`/`--basic-token-env`, or `${ENV_VAR}` expansion in config files
+  and `--header` values.
+- **User frontmatter extras**: `--frontmatter 'key: value'` (repeatable) and
+  `output.frontmatter_extra` in config; merged without overriding core fields.
+- **Crawl manifest**: `--all` runs write `_manifest.json` with per-page URL,
+  file, content hash, timestamp, status, and title.
+- **Metadata extraction**: `HTMLToMarkdownConverter.extract_metadata()`
+  (title with entity unescaping, author, language, OG fields).
+- **Downloader `fetch_result()`**: returns `FetchResult` with final URL,
+  status code, fetch timestamp, and response headers. The crawler now carries
+  this provenance through crawl mode.
+- **Boilerplate word stripping**: `converter.strip_class_words` — word-level
+  class matching catches framework-namespaced boilerplate
+  (`bd-sidebar-primary`) without false positives (`research-content`).
+- **Content selector precedence**: `content_selectors` are now tried in order
+  and the first substantial match wins (matching the documented behavior);
+  platform containers (`.markdown-body`, `.ak-renderer-document`,
+  `.wiki-content`) precede chrome-wrapping landmarks (`main`, `#content`).
+- **Test suite**: 47 pytest tests covering converter quality, provenance,
+  auth, crawler resolution, and CLI end-to-end behavior.
+
+### Fixed
+- HTML comments no longer leak into output as text (Confluence
+  `<!-- data-loadable-* -->` SSR markers polluted converted pages).
+- Heading permalink anchors no longer glue `#` onto heading text
+  (`# Quickstart#` → `# Quickstart`).
+- Table cells with multiple paragraphs no longer break markdown rows
+  (joined with `<br>`); pipes in cell text are escaped.
+- Duplicate table header rows (Confluence thead+tbody repetition) and
+  single-row sticky-header clone tables are removed.
+- Relative links below extensionless "directory" URLs now resolve correctly
+  (`/en/latest` + `quickstart.html` no longer escapes the crawl scope) —
+  this previously broke `--all` crawls of most docs sites.
+- `data:`-URI images (spacers/tracking pixels) are skipped.
+
+### Changed
+- torch/transformers are no longer core dependencies; install the QMD
+  integration via `pip install gnosis[qmd]` (or `requirements-qmd.txt`).
+- Blank-line collapsing in output is stricter (max one blank line).
+- Default User-Agent updated to `Gnosis/1.1`.
+
+## [1.0.0] - 2026-03-27
+
+Initial public release: single-page download, `--all` crawling, configurable
+extraction, QMD integration.
