@@ -321,13 +321,14 @@ like to change.
 
 ## Related projects
 
-Gnosis is designed to feed LLM knowledge bases. Pair it with:
+Gnosis is designed to feed documentation pipelines and LLM knowledge bases.
+Pair it with:
 
-- **[Tianlu](https://github.com/SHCV-it/Tianlu)** — self-maintaining knowledge
-  wiki; gnosis output maps to its inbox format with a 15-line adapter
 - **n8n / cron / Airflow** — schedule gnosis runs and pipe results into your
-  documentation pipeline
+  downstream pipeline
 - **QMD** — local vector search via the `--qmd-index` flag
+- **Any Markdown-to-anything pipeline** — the YAML frontmatter is parseable by
+  python-frontmatter, Jekyll, Hugo, Obsidian, and standard static-site generators
 
 ## License
 

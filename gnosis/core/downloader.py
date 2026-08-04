@@ -62,6 +62,7 @@ class Downloader:
         self.settings = settings or DownloaderSettings()
         self._last_request_time: float = 0
         self._client: Optional[httpx.AsyncClient] = None
+        self._rate_lock: asyncio.Lock = asyncio.Lock()
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client."""
@@ -81,18 +82,19 @@ class Downloader:
         return self._client
 
     async def _rate_limit(self) -> None:
-        """Apply rate limiting between requests."""
+        """Apply rate limiting between requests (safe for concurrent use)."""
         if self.settings.rate_limit_ms <= 0:
             return
 
-        now = asyncio.get_event_loop().time()
-        elapsed_ms = (now - self._last_request_time) * 1000
+        async with self._rate_lock:
+            now = asyncio.get_event_loop().time()
+            elapsed_ms = (now - self._last_request_time) * 1000
 
-        if elapsed_ms < self.settings.rate_limit_ms:
-            wait_time = (self.settings.rate_limit_ms - elapsed_ms) / 1000
-            await asyncio.sleep(wait_time)
+            if elapsed_ms < self.settings.rate_limit_ms:
+                wait_time = (self.settings.rate_limit_ms - elapsed_ms) / 1000
+                await asyncio.sleep(wait_time)
 
-        self._last_request_time = asyncio.get_event_loop().time()
+            self._last_request_time = asyncio.get_event_loop().time()
 
     async def fetch_result(self, url: str) -> FetchResult:
         """
