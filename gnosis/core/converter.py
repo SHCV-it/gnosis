@@ -22,6 +22,11 @@ MIN_CONTENT_THRESHOLD = 200
 _HEADING_ANCHOR_CLASSES = {"headerlink", "anchor", "heading-anchor", "permalink"}
 
 
+# Structural root elements that must never be stripped — decomposing
+# <html> or <body> would destroy the entire document tree.
+_PROTECTED_TAGS = {"html", "head", "body"}
+
+
 class HTMLToMarkdownConverter:
     """
     Converts HTML to clean Markdown.
@@ -137,6 +142,8 @@ class HTMLToMarkdownConverter:
             return False
 
         for tag in soup.find_all(class_=has_boilerplate_word):
+            if tag.name and tag.name.lower() in _PROTECTED_TAGS:
+                continue
             tag.decompose()
 
     def _strip_heading_anchors(self, soup: BeautifulSoup) -> None:

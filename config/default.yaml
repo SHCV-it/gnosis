@@ -133,6 +133,7 @@ converter:
     - social
     - share
     - feedback
+    - badge
 
   # Whether to include images as markdown references
   include_images: true

@@ -28,7 +28,7 @@ def read_qmd_requirements():
 
 setup(
     name="gnosis",
-    version="1.1.1",
+    version="1.1.2",
     author="Steffen Hoehne",
     author_email="steffen.hoehne@shcv.it",
     description="Website to Markdown converter for LLM knowledge bases",

@@ -183,6 +183,7 @@ class ConverterSettings:
             "social",
             "share",
             "feedback",
+            "badge",
         ]
     )
     include_images: bool = True

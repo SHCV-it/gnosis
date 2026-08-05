@@ -157,6 +157,17 @@ class TestBoilerplateWords:
         md = convert(html)
         assert "Important findings" in md
 
+    def test_html_tag_with_toc_word_not_stripped(self):
+        """Regression: <html class="vector-feature-toc-..."> must not be
+        stripped — decomposing <html> destroys the entire DOM."""
+        html = """
+        <html class="vector-feature-toc-pinned-clientpref-1"><body>
+        <main><p>Wikipedia content should survive the toc word in html tag.</p></main>
+        </body></html>
+        """
+        md = convert(html)
+        assert "Wikipedia content" in md
+
 
 class TestImages:
     def test_data_uri_images_skipped(self):
