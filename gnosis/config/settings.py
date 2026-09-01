@@ -351,4 +351,4 @@ def load_config(config_path: Optional[Path] = None) -> Settings:
 
 def get_default_config_path() -> Path:
     """Get path to the default config file shipped with the package."""
-    return Path(__file__).parent.parent.parent / "config" / "default.yaml"
+    return Path(__file__).parent / "default.yaml"

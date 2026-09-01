@@ -202,7 +202,7 @@ gnosis URL [OPTIONS]
 
 ## Configuration reference
 
-Copy [`config/default.yaml`](config/default.yaml) and pass it with `-c`.
+Copy [`gnosis/config/default.yaml`](gnosis/config/default.yaml) and pass it with `-c`.
 Full reference:
 
 ```yaml
@@ -279,7 +279,7 @@ Gnosis is opinionated about boilerplate. By default it:
   (spacers/tracking pixels)
 - **unescapes** HTML entities in titles (`&#8212;` → `—`)
 
-Everything is configurable — see [`config/default.yaml`](config/default.yaml).
+Everything is configurable — see [`gnosis/config/default.yaml`](gnosis/config/default.yaml).
 
 ## Development & testing
 
