@@ -10,7 +10,7 @@ from gnosis.config.settings import DownloaderSettings
 from gnosis.core.downloader import Downloader, RobotsDisallowed
 from gnosis.core.robots import RobotsChecker
 
-ROBOTS_PORT = 8942
+ROBOTS_PORT = 8943
 
 ROBOTS_TXT = (
     "User-agent: *\n"
@@ -55,6 +55,30 @@ def robots_server():
     server.shutdown()
 
 
+class _NoRobotsHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        body = b"not found"
+        self.send_response(404)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args):
+        pass
+
+
+NO_ROBOTS_PORT = 8944
+
+
+@pytest.fixture(scope="module")
+def no_robots_server():
+    server = HTTPServer(("127.0.0.1", NO_ROBOTS_PORT), _NoRobotsHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield f"http://127.0.0.1:{NO_ROBOTS_PORT}"
+    server.shutdown()
+
+
 class TestRobotsChecker:
     def test_is_allowed(self, robots_server):
         async def _run():
@@ -75,6 +99,26 @@ class TestRobotsChecker:
             checker = RobotsChecker("Gnosis/1.1", respect=False)
             try:
                 return await checker.is_allowed(f"{robots_server}/blocked")
+            finally:
+                await checker.close()
+
+        assert asyncio.run(_run()) is True
+
+    def test_crawl_delay(self, robots_server):
+        async def _run():
+            checker = RobotsChecker("Gnosis/1.1")
+            try:
+                return await checker.crawl_delay(f"{robots_server}/allowed")
+            finally:
+                await checker.close()
+
+        assert asyncio.run(_run()) == 0.05
+
+    def test_fail_open_on_missing_robots(self, no_robots_server):
+        async def _run():
+            checker = RobotsChecker("Gnosis/1.1")
+            try:
+                return await checker.is_allowed(f"{no_robots_server}/anything")
             finally:
                 await checker.close()
 

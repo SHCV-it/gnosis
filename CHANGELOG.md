@@ -5,6 +5,7 @@
 ### Added
 - **Byte-level provenance**: `bytes_sha256` (SHA-256 of the raw response bytes) recorded alongside `content_hash` (SHA-256 of the derived markdown); frontmatter also records `content_type` and `redirect_chain` when present.
 - CI pipeline (pytest on 3.12/3.13 + ruff lint + wheel/sdist build) and ruff configuration (E/F/I rules, `gnosis` marked first-party).
+- **robots.txt respect + politeness**: `respect_robots` now actually enforced (per-origin robots.txt via `urllib.robotparser`, fail-open on errors), and `Crawl-delay` is folded into the request rate limiter.
 
 ### Changed
 - Packaging consolidated to a single `pyproject.toml`; removed `setup.py` and `requirements*.txt`. Default config now ships inside the package at `gnosis/config/default.yaml` (no more top-level `config/` namespace).

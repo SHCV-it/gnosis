@@ -1,17 +1,22 @@
 """robots.txt handling for polite, standards-respecting crawling.
 
-Uses Python's `urllib.robotparser` (RFC 9309) for parsing and matching,
-and httpx for async fetching with per-origin caching. Fail-open semantics:
-if robots.txt cannot be fetched (network error, 404, 5xx), the URL is
-treated as allowed — consistent with common crawler practice.
+Uses Python's `urllib.robotparser` (RFC 9309) for allow/disallow matching,
+and parses `Crawl-delay` directly (the stdlib's `crawl_delay()` is unreliable
+across versions). Fetching is async (httpx) with per-origin caching.
+
+Fail-open semantics: if robots.txt cannot be fetched (network error, 404, 5xx),
+the URL is treated as allowed — consistent with common crawler practice.
 """
 
+import re
 from urllib.parse import urlparse
 from urllib.robotparser import RobotFileParser
 
 import httpx
 
 DEFAULT_TIMEOUT = 10.0
+
+_CRAWL_DELAY_RE = re.compile(r"(?im)^\s*crawl-delay\s*:\s*(\d+(?:\.\d+)?)")
 
 
 class RobotsChecker:
@@ -27,6 +32,7 @@ class RobotsChecker:
         self.respect = respect
         self.timeout = timeout
         self._parsers: dict[str, RobotFileParser] = {}
+        self._crawl_delays: dict[str, float | None] = {}
         self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -50,16 +56,28 @@ class RobotsChecker:
             return parser
 
         parser = RobotFileParser()
+        crawl_delay: float | None = None
         try:
             client = await self._get_client()
             response = await client.get(f"{origin}/robots.txt")
             if response.status_code == 200:
-                parser.parse(response.text.splitlines())
-            # Any other status => empty ruleset => allow all (RFC 9309).
+                text = response.text
+                parser.parse(text.splitlines())
+                match = _CRAWL_DELAY_RE.search(text)
+                if match:
+                    try:
+                        crawl_delay = float(match.group(1))
+                    except ValueError:
+                        crawl_delay = None
+            else:
+                # Non-200 => no restrictions => allow all (fail-open).
+                parser.allow_all = True
         except httpx.HTTPError:
             # Network failure => allow all (fail-open).
-            pass
+            parser.allow_all = True
+
         self._parsers[origin] = parser
+        self._crawl_delays[origin] = crawl_delay
         return parser
 
     async def is_allowed(self, url: str) -> bool:
@@ -73,8 +91,10 @@ class RobotsChecker:
         """Return the Crawl-delay (seconds) for this URL's origin, if any."""
         if not self.respect:
             return None
-        parser = await self._parser(url)
-        return parser.crawl_delay(self.user_agent)
+        origin = self._origin(url)
+        if origin not in self._crawl_delays:
+            await self._parser(url)
+        return self._crawl_delays.get(origin)
 
     async def close(self) -> None:
         if self._client is not None and not self._client.is_closed:

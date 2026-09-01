@@ -212,7 +212,7 @@ downloader:
   retries: 3                 # Retries on 5xx / network errors
   user_agent: "Gnosis/1.1"   # User-Agent header
   rate_limit_ms: 500          # Minimum delay between requests (0 = no limit)
-  respect_robots: true        # Obey robots.txt (future)
+  respect_robots: true        # Obey robots.txt
   headers: {}                 # Extra HTTP headers (${ENV_VAR} expanded)
   auth:                       # Optional: bearer | basic | header
     type: bearer
