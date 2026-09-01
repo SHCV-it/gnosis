@@ -97,7 +97,7 @@ class CrawlerSettings:
     """Settings for the website crawler."""
 
     max_depth: int = 10
-    max_pages: int = 100
+    max_pages: int = 500
     concurrent_requests: int = 5
 
 

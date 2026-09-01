@@ -79,9 +79,12 @@ converter:
     - button
     - input
     - form
+    - select
+    - textarea
     - meta
     - link
     - head
+    - template
   
   # CSS selectors to find the main content area. Tried in order — the
   # FIRST selector with a substantial match wins, so platform-specific
