@@ -5,7 +5,7 @@ import hashlib
 import frontmatter
 
 from gnosis.core.downloader import FetchResult
-from gnosis.core.provenance import build_frontmatter, compute_content_hash, render_document
+from gnosis.core.provenance import build_frontmatter, compute_bytes_hash, compute_content_hash, render_document
 
 
 def make_fetch(**overrides) -> FetchResult:
@@ -28,6 +28,14 @@ class TestContentHash:
 
     def test_hash_changes_with_content(self):
         assert compute_content_hash("a") != compute_content_hash("b")
+
+
+class TestBytesHash:
+    def test_sha256_of_raw_bytes(self):
+        assert compute_bytes_hash(b"hello") == hashlib.sha256(b"hello").hexdigest()
+
+    def test_bytes_hash_independent_of_markdown_hash(self):
+        assert compute_bytes_hash(b"<h1>Hello</h1>") != compute_content_hash("# Hello")
 
 
 class TestFrontmatter:
@@ -77,3 +85,18 @@ class TestFrontmatter:
         assert doc.startswith("---\n")
         assert "\n---\n" in doc
         assert doc.endswith("Body.\n")
+
+    def test_bytes_sha256_present(self):
+        fetch = make_fetch(raw_bytes=b"<html></html>")
+        fm = build_frontmatter(fetch, "# Doc")
+        assert fm["bytes_sha256"] == compute_bytes_hash(b"<html></html>")
+
+    def test_content_type_and_redirect_chain(self):
+        fetch = make_fetch(
+            raw_bytes=b"<html></html>",
+            content_type="text/html",
+            redirect_chain=["https://example.com/a", "https://example.com/b"],
+        )
+        fm = build_frontmatter(fetch, "# Doc")
+        assert fm["content_type"] == "text/html"
+        assert fm["redirect_chain"] == ["https://example.com/a", "https://example.com/b"]

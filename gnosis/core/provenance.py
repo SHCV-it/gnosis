@@ -33,6 +33,11 @@ def compute_content_hash(markdown: str) -> str:
     return hashlib.sha256(markdown.encode("utf-8")).hexdigest()
 
 
+def compute_bytes_hash(raw_bytes: bytes) -> str:
+    """Compute the SHA-256 hash of the raw response body bytes."""
+    return hashlib.sha256(raw_bytes).hexdigest()
+
+
 def build_frontmatter(
     fetch: FetchResult,
     markdown: str,
@@ -59,6 +64,7 @@ def build_frontmatter(
         "url": fetch.final_url or fetch.url,
         "fetched_at": fetch.fetched_at,
         "content_hash": compute_content_hash(markdown),
+        "bytes_sha256": compute_bytes_hash(fetch.raw_bytes),
         "status_code": fetch.status_code,
         "generator": f"gnosis/{__version__}",
     }
@@ -83,6 +89,10 @@ def build_frontmatter(
 
     if fetch.url != fetch.final_url:
         frontmatter["requested_url"] = fetch.url
+    if fetch.content_type:
+        frontmatter["content_type"] = fetch.content_type
+    if fetch.redirect_chain:
+        frontmatter["redirect_chain"] = fetch.redirect_chain
 
     # User extras: merged first-class but never clobber core provenance
     for key, value in (extra or {}).items():

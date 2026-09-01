@@ -62,5 +62,8 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["gnosis"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

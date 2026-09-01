@@ -34,6 +34,9 @@ class FetchResult:
         html: Response body decoded as text.
         fetched_at: UTC timestamp (ISO 8601) of the fetch.
         response_headers: Final response headers (lowercase keys).
+        raw_bytes: Raw response body bytes (for byte-level hashing / WARC).
+        content_type: Response Content-Type header value.
+        redirect_chain: URLs followed through redirects (final URL last).
     """
 
     url: str
@@ -42,6 +45,9 @@ class FetchResult:
     html: str
     fetched_at: str
     response_headers: dict[str, str] = field(default_factory=dict)
+    raw_bytes: bytes = b""
+    content_type: str = ""
+    redirect_chain: list[str] = field(default_factory=list)
 
 
 class Downloader:
@@ -126,6 +132,9 @@ class Downloader:
                     html=response.text,
                     fetched_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
                     response_headers={k.lower(): v for k, v in response.headers.items()},
+                    raw_bytes=response.content,
+                    content_type=response.headers.get("content-type", ""),
+                    redirect_chain=[str(r.url) for r in response.history] + [str(response.url)],
                 )
 
             except httpx.HTTPStatusError as e:
