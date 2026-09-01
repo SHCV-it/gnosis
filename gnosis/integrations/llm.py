@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 from gnosis.config.settings import QMDSettings
 

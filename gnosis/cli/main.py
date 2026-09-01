@@ -20,9 +20,9 @@ from rich.console import Console
 from gnosis import __version__
 from gnosis.config import Settings, load_config
 from gnosis.config.settings import AuthSettings, expand_env
-from gnosis.core.downloader import Downloader
 from gnosis.core.converter import HTMLToMarkdownConverter
 from gnosis.core.crawler import Crawler
+from gnosis.core.downloader import Downloader
 from gnosis.core.provenance import build_frontmatter, compute_content_hash, render_document
 
 console = Console()
@@ -377,7 +377,7 @@ def run_qmd_integration(
 
     # Lazy imports — torch/transformers are heavy and optional
     from gnosis.integrations.llm import LLMContextGenerator
-    from gnosis.integrations.qmd import QMDIntegrator, QMDNotFoundError, QMDCommandError
+    from gnosis.integrations.qmd import QMDCommandError, QMDIntegrator, QMDNotFoundError
     
     try:
         if not quiet:
@@ -432,7 +432,7 @@ def run_qmd_integration(
         
         # Run QMD pipeline
         if not quiet:
-            console.print(f"[blue]📚[/blue] Adding collection to QMD...")
+            console.print("[blue]📚[/blue] Adding collection to QMD...")
         
         try:
             qmd.run_pipeline(output_dir, collection_name, context_description)
@@ -441,7 +441,7 @@ def run_qmd_integration(
             return
         
         if not quiet:
-            console.print(f"[green]✅[/green] QMD integration complete!")
+            console.print("[green]✅[/green] QMD integration complete!")
             console.print(f"[dim]Collection '{collection_name}' is ready for semantic search.[/dim]")
     
     except KeyboardInterrupt:
@@ -527,7 +527,7 @@ async def discover_pages_mode(url: str, settings: Settings, quiet: bool, verbose
                 f"(stopped at max_pages limit of {settings.crawler.max_pages})"
             )
             console.print(
-                f"    [dim]Note: More pages may exist beyond this limit[/dim]"
+                "    [dim]Note: More pages may exist beyond this limit[/dim]"
             )
         else:
             console.print(
@@ -633,7 +633,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
 
     if not quiet:
         console.print()
-        console.print(f"[green]✅[/green] Complete!")
+        console.print("[green]✅[/green] Complete!")
         console.print(f"    Saved: {saved_count} files")
         if skipped_count > 0:
             console.print(f"    Skipped: {skipped_count} files (already exist)")

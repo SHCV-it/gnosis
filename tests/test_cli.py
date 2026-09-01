@@ -1,9 +1,7 @@
 """End-to-end CLI tests against a localhost HTTP server."""
 
-import asyncio
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from pathlib import Path
 
 import frontmatter
 import pytest
@@ -238,7 +236,6 @@ class TestCrawl:
 
     def test_crawl_with_concurrency_two(self, server, tmp_path):
         """Concurrent crawl should work without deadlocks."""
-        from pathlib import Path
         cfg = tmp_path / "cfg.yaml"
         cfg.write_text("crawler:\n  concurrent_requests: 2\n  max_pages: 2\n  max_depth: 0")
         result = run_cli(

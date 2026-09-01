@@ -54,3 +54,10 @@ exclude = ["tests", "tests.*"]
 
 [tool.setuptools.package-data]
 gnosis = ["config/*.yaml"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

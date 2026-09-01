@@ -278,7 +278,7 @@ class HTMLToMarkdownConverter:
                 # A previous selector already won — selectors are ordered by
                 # precedence, so stop looking.
                 if self.verbose and matches:
-                    print(f"[Gnosis]   (ignored — content already found)")
+                    print("[Gnosis]   (ignored — content already found)")
                 continue
 
             for element in matches:

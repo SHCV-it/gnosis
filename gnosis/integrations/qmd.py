@@ -6,8 +6,8 @@ and generate embeddings for documentation knowledge bases.
 """
 
 import re
-import subprocess
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Optional
 
