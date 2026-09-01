@@ -14,12 +14,21 @@ from typing import Optional
 import httpx
 
 from gnosis.config.settings import DownloaderSettings
+from gnosis.core.robots import RobotsChecker
 
 
 class DownloadError(Exception):
     """Raised when a download fails after all retries."""
 
     pass
+
+
+class RobotsDisallowed(DownloadError):
+    """Raised when robots.txt disallows fetching a URL."""
+
+    def __init__(self, url: str) -> None:
+        self.url = url
+        super().__init__(f"Blocked by robots.txt: {url}")
 
 
 @dataclass
@@ -69,6 +78,7 @@ class Downloader:
         self._last_request_time: float = 0
         self._client: Optional[httpx.AsyncClient] = None
         self._rate_lock: asyncio.Lock = asyncio.Lock()
+        self._robots = RobotsChecker(self.settings.user_agent, respect=self.settings.respect_robots)
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client."""
@@ -87,18 +97,22 @@ class Downloader:
             )
         return self._client
 
-    async def _rate_limit(self) -> None:
+    async def _rate_limit(self, url: str | None = None) -> None:
         """Apply rate limiting between requests (safe for concurrent use)."""
-        if self.settings.rate_limit_ms <= 0:
+        delay_ms = self.settings.rate_limit_ms
+        if url is not None:
+            crawl_delay = await self._robots.crawl_delay(url)
+            if crawl_delay:
+                delay_ms = max(delay_ms, int(crawl_delay * 1000))
+        if delay_ms <= 0:
             return
 
         async with self._rate_lock:
             now = asyncio.get_event_loop().time()
             elapsed_ms = (now - self._last_request_time) * 1000
 
-            if elapsed_ms < self.settings.rate_limit_ms:
-                wait_time = (self.settings.rate_limit_ms - elapsed_ms) / 1000
-                await asyncio.sleep(wait_time)
+            if elapsed_ms < delay_ms:
+                await asyncio.sleep((delay_ms - elapsed_ms) / 1000)
 
             self._last_request_time = asyncio.get_event_loop().time()
 
@@ -120,7 +134,9 @@ class Downloader:
 
         for attempt in range(self.settings.retries + 1):
             try:
-                await self._rate_limit()
+                if not await self._robots.is_allowed(url):
+                    raise RobotsDisallowed(url)
+                await self._rate_limit(url)
 
                 response = await client.get(url)
                 response.raise_for_status()
@@ -175,6 +191,7 @@ class Downloader:
         if self._client is not None and not self._client.is_closed:
             await self._client.aclose()
             self._client = None
+        await self._robots.close()
 
     async def __aenter__(self):
         """Async context manager entry."""

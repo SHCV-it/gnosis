@@ -22,7 +22,7 @@ from gnosis.config import Settings, load_config
 from gnosis.config.settings import AuthSettings, expand_env
 from gnosis.core.converter import HTMLToMarkdownConverter
 from gnosis.core.crawler import Crawler
-from gnosis.core.downloader import Downloader
+from gnosis.core.downloader import Downloader, RobotsDisallowed
 from gnosis.core.provenance import build_frontmatter, compute_content_hash, render_document
 
 console = Console()
@@ -460,6 +460,9 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
 
     try:
         fetch = await downloader.fetch_result(url)
+    except RobotsDisallowed as e:
+        console.print(f"[yellow]⚠[/yellow] {e}")
+        sys.exit(1)
     except Exception as e:
         console.print(f"[red]✗[/red] Failed to download: {e}")
         sys.exit(1)
