@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Byte-level provenance**: `bytes_sha256` (SHA-256 of the raw response bytes) recorded alongside `content_hash` (SHA-256 of the derived markdown); frontmatter also records `content_type` and `redirect_chain` when present.
+- CI pipeline (pytest on 3.12/3.13 + ruff lint + wheel/sdist build) and ruff configuration (E/F/I rules, `gnosis` marked first-party).
+
+### Changed
+- Packaging consolidated to a single `pyproject.toml`; removed `setup.py` and `requirements*.txt`. Default config now ships inside the package at `gnosis/config/default.yaml` (no more top-level `config/` namespace).
+
+### Fixed
+- Dataclass defaults aligned with `default.yaml` (`max_pages` 500; added `select`/`textarea`/`template` to `excluded_tags`).
+
 ## [1.1.0] - 2026-08-04
 
 ### Added

@@ -103,6 +103,9 @@ class TestFetchResultProvenance:
         assert result.final_url == echo_server
         assert result.fetched_at.endswith("Z")
         assert "content-type" in result.response_headers
+        assert result.content_type == "application/json"
+        assert result.raw_bytes == result.html.encode("utf-8")
+        assert result.redirect_chain == [echo_server]
 
 
 class TestEnvExpansion:
