@@ -238,6 +238,11 @@ class TestSinglePage:
         assert (tmp_path / "llms.txt").exists()
         assert (tmp_path / "llms-full.txt").exists()
 
+    def test_crawl_writes_checkpoint(self, server, tmp_path):
+        result = run_cli([f"{server}/page", "--all", "-o", str(tmp_path), "-f", "-q"])
+        assert result.exit_code == 0
+        assert (tmp_path / ".gnosis-checkpoint.json").exists()
+
 
 class TestCrawl:
     def test_crawl_writes_manifest(self, server, tmp_path):

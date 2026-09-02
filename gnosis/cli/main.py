@@ -21,6 +21,7 @@ from gnosis import __version__
 from gnosis.config import Settings, load_config
 from gnosis.config.settings import AuthSettings, expand_env
 from gnosis.core.archive import Archiver
+from gnosis.core.checkpoint import load_checkpoint, save_checkpoint
 from gnosis.core.converter import MIN_CONTENT_THRESHOLD, HTMLToMarkdownConverter
 from gnosis.core.crawler import Crawler
 from gnosis.core.downloader import Downloader, RobotsDisallowed
@@ -683,9 +684,8 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     skipped_count = 0
     duplicate_count = 0
     failed: list[str] = []
-    manifest: list[dict] = []
     llms_pages: list[dict] = []
-    seen_hashes: set[str] = set()
+    seen_hashes, manifest = load_checkpoint(output_dir)
 
     try:
         async for page_url, fetch in crawler.crawl(url):
@@ -738,6 +738,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                     "title": metadata.get("title") or "",
                 }
             )
+            save_checkpoint(output_dir, seen_hashes, manifest)
 
             if not quiet:
                 console.print(f"[green]✓[/green] Saved: {output_path}")
