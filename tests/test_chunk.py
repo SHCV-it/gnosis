@@ -76,3 +76,26 @@ def test_oversized_split_offsets_document_relative():
     assert split
     assert any(c.start > 0 for c in split)  # document-relative, not all part-relative 0
     assert all(c.char_count == c.end - c.start for c in split)
+
+
+def test_token_aware_and_exact_spans():
+    big = "# Big\n\n" + "\n\n".join("word " * 30 for _ in range(60))
+    chunks = chunk_markdown(big)
+    assert any("." in c.chunk_id for c in chunks), "oversized section should split"
+    for c in chunks:
+        assert c.token_count > 0
+        assert big[c.start:c.end] == c.content
+
+
+def test_manifest_has_token_and_sha():
+    import hashlib
+    chunks = chunk_markdown(MD)
+    manifest = chunk_manifest("d", "h", chunks)
+    assert all("token_count" in e and "chunk_sha256" in e for e in manifest)
+    assert manifest[0]["chunk_sha256"] == hashlib.sha256(chunks[0].content.encode()).hexdigest()
+
+
+def test_cjk_splits_under_token_budget():
+    cjk = "# 中文\n\n" + "你好世界。" * 300
+    chunks = chunk_markdown(cjk, max_tokens=512)
+    assert any("." in c.chunk_id for c in chunks)
