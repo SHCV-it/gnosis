@@ -36,6 +36,11 @@ class TestAssertPublicUrl:
             "http://240.0.0.1/",
             "http://[fc00::1]/",
             "http://[fe80::1]/",
+            "http://100.64.0.1/",           # CGNAT / shared address space
+            "http://[2002::1]/",            # 6to4
+            "http://[2001::1]/",            # Teredo
+            "http://[64:ff9b::1]/",         # NAT64
+            "http://[64:ff9b:1::1]/",       # NAT64 local-use
         ],
     )
     def test_blocks_private_addresses(self, url):

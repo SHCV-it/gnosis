@@ -44,18 +44,33 @@ class PrivateNetworkBlocked(Exception):
     """Raised when a request targets a private/reserved network address."""
 
 
+# Shared/transitional ranges that ipaddress's is_private/is_reserved flags do
+# NOT classify. These must be blocked for a trustworthy SSRF guard.
+_SPECIAL_V4 = (ipaddress.ip_network("100.64.0.0/10"),)  # CGNAT / RFC 6598
+_SPECIAL_V6 = (
+    ipaddress.ip_network("2002::/16"),        # 6to4
+    ipaddress.ip_network("2001::/32"),        # Teredo
+    ipaddress.ip_network("64:ff9b::/96"),     # NAT64
+    ipaddress.ip_network("64:ff9b:1::/48"),   # NAT64 local-use
+)
+
+
 def _is_private_address(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     mapped = getattr(addr, "ipv4_mapped", None)
     if mapped is not None:
         addr = mapped
-    return (
+    if (
         addr.is_loopback
         or addr.is_private
         or addr.is_link_local
         or addr.is_multicast
         or addr.is_reserved
         or addr.is_unspecified
-    )
+    ):
+        return True
+    if isinstance(addr, ipaddress.IPv4Address):
+        return any(addr in net for net in _SPECIAL_V4)
+    return any(addr in net for net in _SPECIAL_V6)
 
 
 def _block(host: str, ip: str | None = None) -> typing.NoReturn:
