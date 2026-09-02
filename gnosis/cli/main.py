@@ -23,6 +23,7 @@ from gnosis.config.settings import AuthSettings, expand_env
 from gnosis.core.converter import HTMLToMarkdownConverter
 from gnosis.core.crawler import Crawler
 from gnosis.core.downloader import Downloader, RobotsDisallowed
+from gnosis.core.network import PrivateNetworkBlocked
 from gnosis.core.provenance import build_frontmatter, compute_content_hash, render_document
 
 console = Console()
@@ -283,6 +284,11 @@ def _render_output(fetch, markdown: str, metadata: dict, settings: Settings) -> 
     metavar="ENV_VAR",
     help="HTTP Basic password/token read from ENV_VAR (e.g. CONFLUENCE_PAT).",
 )
+@click.option(
+    "--allow-private-network",
+    is_flag=True,
+    help="Allow fetching loopback/private network addresses (bypasses the SSRF guard).",
+)
 @click.version_option(version=__version__, prog_name="gnosis")
 def cli(
     url: str,
@@ -300,6 +306,7 @@ def cli(
     bearer_token_env: Optional[str],
     basic_user: Optional[str],
     basic_token_env: Optional[str],
+    allow_private_network: bool,
 ):
     """
     Download websites and convert them to LLM-friendly markdown.
@@ -327,6 +334,8 @@ def cli(
         settings.output.directory = str(output)
     if overwrite:
         settings.output.overwrite = True
+    if allow_private_network:
+        settings.downloader.allow_private_network = True
     if qmd_index:
         settings.qmd.enabled = True
     if no_frontmatter:
@@ -462,6 +471,9 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
         fetch = await downloader.fetch_result(url)
     except RobotsDisallowed as e:
         console.print(f"[yellow]⚠[/yellow] {e}")
+        sys.exit(1)
+    except PrivateNetworkBlocked as e:
+        console.print(f"[red]✗[/red] {e}")
         sys.exit(1)
     except Exception as e:
         console.print(f"[red]✗[/red] Failed to download: {e}")

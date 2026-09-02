@@ -128,7 +128,7 @@ class TestRobotsChecker:
 class TestDownloaderRobots:
     def test_disallowed_url_raises(self, robots_server):
         async def _run():
-            async with Downloader(DownloaderSettings(rate_limit_ms=0)) as dl:
+            async with Downloader(DownloaderSettings(rate_limit_ms=0, allow_private_network=True)) as dl:
                 return await dl.fetch_result(f"{robots_server}/blocked")
 
         with pytest.raises(RobotsDisallowed):
@@ -136,7 +136,7 @@ class TestDownloaderRobots:
 
     def test_allowed_url_succeeds(self, robots_server):
         async def _run():
-            async with Downloader(DownloaderSettings(rate_limit_ms=0)) as dl:
+            async with Downloader(DownloaderSettings(rate_limit_ms=0, allow_private_network=True)) as dl:
                 return await dl.fetch_result(f"{robots_server}/allowed")
 
         result = asyncio.run(_run())
@@ -144,7 +144,7 @@ class TestDownloaderRobots:
 
     def test_respect_false_fetches_disallowed(self, robots_server):
         async def _run():
-            settings = DownloaderSettings(rate_limit_ms=0, respect_robots=False)
+            settings = DownloaderSettings(rate_limit_ms=0, allow_private_network=True, respect_robots=False)
             async with Downloader(settings) as dl:
                 return await dl.fetch_result(f"{robots_server}/blocked")
 

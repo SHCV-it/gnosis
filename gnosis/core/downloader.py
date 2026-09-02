@@ -14,6 +14,7 @@ from typing import Optional
 import httpx
 
 from gnosis.config.settings import DownloaderSettings
+from gnosis.core.network import assert_public_url
 from gnosis.core.robots import RobotsChecker
 
 
@@ -90,10 +91,12 @@ class Downloader:
             }
             # Custom headers and auth override/extend the defaults
             headers.update(self.settings.request_headers())
+            event_hooks = {} if self.settings.allow_private_network else {"request": [self._ssrf_guard]}
             self._client = httpx.AsyncClient(
                 timeout=httpx.Timeout(self.settings.timeout),
                 follow_redirects=True,
                 headers=headers,
+                event_hooks=event_hooks,
             )
         return self._client
 
@@ -116,6 +119,10 @@ class Downloader:
 
             self._last_request_time = asyncio.get_event_loop().time()
 
+    async def _ssrf_guard(self, request: httpx.Request) -> None:
+        """Block requests targeting private/reserved networks (SSRF guard)."""
+        await assert_public_url(str(request.url))
+
     async def fetch_result(self, url: str) -> FetchResult:
         """
         Fetch a URL and return the full result with provenance metadata.
@@ -129,6 +136,9 @@ class Downloader:
         Raises:
             DownloadError: If the download fails after all retries.
         """
+        if not self.settings.allow_private_network:
+            await assert_public_url(url)
+
         client = await self._get_client()
         last_error: Optional[Exception] = None
 

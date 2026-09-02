@@ -53,7 +53,7 @@ def fetch_headers(settings: DownloaderSettings, url: str) -> dict:
 class TestAuthSchemes:
     def test_bearer(self, echo_server):
         settings = DownloaderSettings(
-            rate_limit_ms=0, auth=AuthSettings(type="bearer", token="tok-123")
+            rate_limit_ms=0, allow_private_network=True, auth=AuthSettings(type="bearer", token="tok-123")
         )
         received = fetch_headers(settings, echo_server)
         assert received["authorization"] == "Bearer tok-123"
@@ -61,7 +61,7 @@ class TestAuthSchemes:
     def test_basic_confluence_pat_pattern(self, echo_server):
         """Confluence Cloud PAT = Basic base64(email:api_token)."""
         settings = DownloaderSettings(
-            rate_limit_ms=0,
+            rate_limit_ms=0, allow_private_network=True,
             auth=AuthSettings(type="basic", username="me@example.com", password="PAT"),
         )
         received = fetch_headers(settings, echo_server)
@@ -70,20 +70,20 @@ class TestAuthSchemes:
 
     def test_custom_header(self, echo_server):
         settings = DownloaderSettings(
-            rate_limit_ms=0,
+            rate_limit_ms=0, allow_private_network=True,
             auth=AuthSettings(type="header", name="X-Custom-Auth", value="v1"),
         )
         received = fetch_headers(settings, echo_server)
         assert received["x_custom"] == "v1"
 
     def test_no_auth_sends_nothing(self, echo_server):
-        received = fetch_headers(DownloaderSettings(rate_limit_ms=0), echo_server)
+        received = fetch_headers(DownloaderSettings(rate_limit_ms=0, allow_private_network=True), echo_server)
         assert received["authorization"] is None
         assert received["x_custom"] is None
 
     def test_custom_headers_merge_with_auth(self, echo_server):
         settings = DownloaderSettings(
-            rate_limit_ms=0,
+            rate_limit_ms=0, allow_private_network=True,
             headers={"X-Custom-Auth": "from-headers"},
             auth=AuthSettings(type="bearer", token="t"),
         )
@@ -95,7 +95,7 @@ class TestAuthSchemes:
 class TestFetchResultProvenance:
     def test_fetch_result_fields(self, echo_server):
         async def _run():
-            async with Downloader(DownloaderSettings(rate_limit_ms=0)) as dl:
+            async with Downloader(DownloaderSettings(rate_limit_ms=0, allow_private_network=True)) as dl:
                 return await dl.fetch_result(echo_server)
 
         result = asyncio.run(_run())

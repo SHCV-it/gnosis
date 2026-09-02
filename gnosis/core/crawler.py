@@ -16,6 +16,7 @@ from bs4 import BeautifulSoup
 
 from gnosis.config.settings import CrawlerSettings
 from gnosis.core.downloader import Downloader, DownloadError, FetchResult
+from gnosis.core.network import PrivateNetworkBlocked
 
 
 class Crawler:
@@ -76,7 +77,7 @@ class Crawler:
 
             try:
                 html = await self.downloader.fetch(url)
-            except DownloadError:
+            except (DownloadError, PrivateNetworkBlocked):
                 continue
 
             discovered_urls.append(url)

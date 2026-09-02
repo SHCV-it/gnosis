@@ -22,6 +22,7 @@ downloader:
 
   # Whether to respect robots.txt
   respect_robots: true
+  allow_private_network: false
 
   # Extra HTTP headers sent with every request.
   # ${ENV_VAR} references are expanded at load time — keep secrets in the

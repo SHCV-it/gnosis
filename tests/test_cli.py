@@ -112,7 +112,7 @@ def server():
 
 
 def run_cli(args):
-    return CliRunner().invoke(cli, args, catch_exceptions=False)
+    return CliRunner().invoke(cli, [*args, "--allow-private-network"], catch_exceptions=False)
 
 
 class TestSinglePage:

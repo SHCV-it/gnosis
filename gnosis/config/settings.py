@@ -81,6 +81,7 @@ class DownloaderSettings:
     user_agent: str = "Gnosis/1.1 (Website to Markdown converter)"
     rate_limit_ms: int = 500
     respect_robots: bool = True
+    allow_private_network: bool = False
     headers: dict[str, str] = field(default_factory=dict)
     auth: Optional[AuthSettings] = None
 
@@ -281,6 +282,7 @@ def load_config(config_path: Optional[Path] = None) -> Settings:
             user_agent=dl.get("user_agent", settings.downloader.user_agent),
             rate_limit_ms=dl.get("rate_limit_ms", settings.downloader.rate_limit_ms),
             respect_robots=dl.get("respect_robots", settings.downloader.respect_robots),
+            allow_private_network=dl.get("allow_private_network", settings.downloader.allow_private_network),
             headers=dict(dl.get("headers") or {}),
             auth=auth,
         )
