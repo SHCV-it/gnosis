@@ -18,6 +18,15 @@ SITEMAP = b"""<?xml version="1.0" encoding="UTF-8"?>
   <url><loc>http://example.com/b</loc></url>
 </urlset>"""
 
+MALICIOUS_SITEMAP = b"""<?xml version="1.0"?>
+<!DOCTYPE lolz [
+  <!ENTITY lol "lol">
+  <!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
+]>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>http://example.com/x</loc></url>
+</urlset>"""
+
 
 class _Handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -26,6 +35,10 @@ class _Handler(BaseHTTPRequestHandler):
             self.send_response(404)
         elif self.path == "/sitemap.xml":
             body = SITEMAP
+            self.send_response(200)
+            self.send_header("Content-Type", "application/xml")
+        elif self.path == "/sitemap-malicious.xml":
+            body = MALICIOUS_SITEMAP
             self.send_response(200)
             self.send_header("Content-Type", "application/xml")
         else:
@@ -78,3 +91,15 @@ def test_fetch_sitemap_urls(server):
 
     urls = asyncio.run(_run())
     assert urls == ["http://example.com/a", "http://example.com/b"]
+
+
+def test_fetch_sitemap_urls_rejects_entities(server):
+    async def _run():
+        settings = DownloaderSettings(
+            rate_limit_ms=0, allow_private_network=True, respect_robots=False
+        )
+        async with Downloader(settings) as dl:
+            return await fetch_sitemap_urls(f"{server}/sitemap-malicious.xml", dl)
+
+    urls = asyncio.run(_run())
+    assert urls == []

@@ -5,7 +5,7 @@ site's important pages for AI agents, and `llms-full.txt` is the full
 concatenated content.
 """
 
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET
 
 from gnosis.core.downloader import Downloader
 
@@ -38,5 +38,10 @@ def render_llms_full(pages: list[dict]) -> str:
 async def fetch_sitemap_urls(url: str, downloader: Downloader) -> list[str]:
     """Fetch a sitemap.xml and return the page URLs it lists."""
     fetch = await downloader.fetch_result(url)
-    root = ET.fromstring(fetch.raw_bytes)
+    try:
+        root = ET.fromstring(fetch.raw_bytes)
+    except (ET.ParseError, ValueError):
+        # Reject DOCTYPE/entity-expansion and any malformed XML outright —
+        # sitemap discovery is best-effort and must never be a DoS vector.
+        return []
     return [loc.text for loc in root.findall(".//sm:loc", _SITEMAP_NS) if loc.text]
