@@ -58,3 +58,13 @@ the **already-validated IP** — closing the DNS-rebinding TOCTOU that plagues
 resolve-then-connect guards. CGNAT (`100.64.0.0/10`), 6to4, Teredo, NAT64
 (`64:ff9b::/96`), and IPv4-mapped/embedded forms are blocked. Every redirect
 hop is re-checked.
+
+## Cryptographic signing (seal of origin)
+
+\`gnosis <url> --sign --sign-key key.pem\` (or \`$GNOSIS_SIGNING_KEY\`) adds an
+Ed25519 signature over a canonical manifest of the provenance fields plus the
+recomputed body hash. \`gnosis-keygen\` generates a keypair and
+\`gnosis-verify file.md\` checks a document, exiting non-zero if the body or
+provenance changed after signing. Tamper-evident, no trusted third party.
+
+Install the optional dependency with \`pip install 'gnosis-markdown[sign]'\`.
