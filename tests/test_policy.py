@@ -46,3 +46,16 @@ def test_no_rules_allows():
 def test_license_match_is_substring_case_insensitive():
     engine = PolicyEngine([{"name": "no-cc", "deny_if": {"license": ["cc-by-nc"]}}])
     assert not engine.evaluate("https://x/a", {"license": "CC-BY-NC 4.0"}).allowed
+
+
+def test_scalar_license_normalized():
+    """Regression (reviewer P2): a scalar license pattern must not be iterated char-by-char."""
+    engine = PolicyEngine([{"name": "no-cc", "deny_if": {"license": "CC-BY-NC"}}])
+    assert not engine.evaluate("https://x/a", {"license": "CC-BY-NC 4.0"}).allowed
+    assert engine.evaluate("https://x/a", {"license": "MIT"}).allowed
+
+
+def test_malformed_rule_raises():
+    import pytest as _pytest
+    with _pytest.raises(ValueError):
+        PolicyEngine(["not-a-dict"])

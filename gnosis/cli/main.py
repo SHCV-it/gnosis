@@ -605,10 +605,13 @@ def _page_record(fetch, markdown: str, metadata: dict) -> dict:
     return record
 
 
-def _write_failed_data_card(settings: Settings, url: str, error: str) -> None:
+def _write_failed_data_card(settings: Settings, url: str, error: str, policy_decision=None) -> None:
+    record = {"url": url, "status_code": None, "error": error, "raw_bytes": 0, "markdown_chars": 0}
+    if policy_decision:
+        record["policy_decision"] = policy_decision
     write_data_card(
         Path(settings.output.directory),
-        [{"url": url, "status_code": None, "error": error, "raw_bytes": 0, "markdown_chars": 0}],
+        [record],
         {"source": url, "mode": "single", "generator": f"gnosis/{__version__}"},
     )
 
@@ -638,12 +641,6 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
         _write_failed_data_card(settings, url, str(e))
         sys.exit(1)
 
-    if settings.output.warc:
-        archiver = Archiver(Path(settings.output.directory), user_agent=settings.downloader.user_agent)
-        try:
-            archiver.archive(fetch, compute_bytes_hash(fetch.raw_bytes))
-        finally:
-            archiver.close()
     if not quiet:
         console.print("[blue]🔄[/blue] Converting to markdown...")
 
@@ -672,7 +669,10 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
     if not decision.allowed:
         if not quiet:
             console.print(f"[red]✗[/red] Blocked by policy '{decision.rule}': {decision.reason}")
-        _write_failed_data_card(settings, fetch.final_url, f"policy: {decision.reason}")
+        _write_failed_data_card(
+            settings, fetch.final_url, f"policy: {decision.reason}",
+            policy_decision=metadata["policy_decision"],
+        )
         sys.exit(1)
     document = _render_output(fetch, markdown, metadata, settings)
 
@@ -688,6 +688,13 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
         sys.exit(1)
 
     # Save output
+    if settings.output.warc:
+        archiver = Archiver(Path(settings.output.directory), user_agent=settings.downloader.user_agent)
+        try:
+            archiver.archive(fetch, compute_bytes_hash(fetch.raw_bytes))
+        finally:
+            archiver.close()
+
     output_path.write_text(document, encoding="utf-8")
     if settings.output.chunk:
         _write_chunk_manifest(markdown, compute_content_hash(markdown), output_path, fetch.final_url)
@@ -814,8 +821,6 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                         console.print(f"[dim]⏭  Skipped (duplicate): {page_url}[/dim]")
                     continue
                 seen_hashes.add(content_hash)
-                if archiver is not None:
-                    archiver.archive(fetch, compute_bytes_hash(fetch.raw_bytes))
                 consent = await fetch_host_consent(fetch.final_url, downloader)
                 if consent:
                     metadata.update(consent)
@@ -834,11 +839,14 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                             "error": f"policy: {decision.reason}",
                             "raw_bytes": 0,
                             "markdown_chars": 0,
+                            "policy_decision": metadata["policy_decision"],
                         }
                     )
                     if not quiet:
                         console.print(f"[red]✗[/red] Blocked by policy '{decision.rule}': {decision.reason}")
                     continue
+                if archiver is not None:
+                    archiver.archive(fetch, compute_bytes_hash(fetch.raw_bytes))
                 document = _render_output(fetch, markdown, metadata, settings)
             except Exception as e:
                 if not quiet:

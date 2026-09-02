@@ -254,8 +254,12 @@ class TestSinglePage:
             [f"{server}/proprietary", "-o", str(tmp_path), "-f", "-q", "--config", str(cfg)]
         )
         assert result.exit_code != 0
+        # the denied page must NOT be written as markdown
+        assert list(tmp_path.glob("*.md")) == []
         card = json.loads((tmp_path / "data-card.json").read_text())
         assert card["pages"][0]["error"].startswith("policy:")
+        assert card["pages"][0]["policy_decision"]["allowed"] is False
+        assert card["pages"][0]["policy_decision"]["rule"] == "no-proprietary"
 
     def test_empty_page_still_written(self, server, tmp_path):
         """Pages with minimal content should still be captured."""

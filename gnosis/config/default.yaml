@@ -229,7 +229,7 @@ render:
   # Render timeout in seconds
   timeout: 30
 
-# Compliance policies: ordered allow/deny rules evaluated per page.
+# Compliance policies: allow rules take precedence over deny rules, evaluated per page.
 # Each rule may deny_if / allow_if on license (substring), ai.txt directives,
 # or URL path (fnmatch globs). Decisions are recorded in frontmatter + data card.
 # Example:
