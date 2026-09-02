@@ -23,6 +23,10 @@ them. It is the *auditable* web-to-Markdown converter.
 > Unlike Firecrawl, Crawl4AI, or Jina Reader, gnosis ships byte-level SHA-256
 > and WARC-grade evidence out of the box.
 
+<p align="center">
+  <img src="docs/demo.gif" alt="gnosis in action" width="720">
+</p>
+
 ## Why Gnosis
 
 | Feature | Gnosis | Firecrawl | Crawl4AI | Jina Reader |
