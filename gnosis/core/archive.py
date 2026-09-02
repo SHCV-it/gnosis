@@ -74,3 +74,10 @@ class Archiver:
                 pass
             self._warc_file = None
         self._writer = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
+        return False

@@ -604,58 +604,59 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     manifest: list[dict] = []
     seen_hashes: set[str] = set()
 
-    async for page_url, fetch in crawler.crawl(url):
-        if not quiet:
-            console.print(f"[blue]📥[/blue] Downloaded: {page_url}")
-        if archiver is not None:
-            archiver.archive(fetch, compute_bytes_hash(fetch.raw_bytes))
+    try:
+        async for page_url, fetch in crawler.crawl(url):
+            if not quiet:
+                console.print(f"[blue]📥[/blue] Downloaded: {page_url}")
+            if archiver is not None:
+                archiver.archive(fetch, compute_bytes_hash(fetch.raw_bytes))
 
-        try:
-            metadata = converter.extract_metadata(fetch.html)
-            markdown = converter.convert(fetch.html, base_url=fetch.final_url)
-            if not markdown.strip():
-                raise ValueError("conversion produced empty output")
-            content_hash = compute_content_hash(markdown)
-            if content_hash in seen_hashes:
-                duplicate_count += 1
+            try:
+                metadata = converter.extract_metadata(fetch.html)
+                markdown = converter.convert(fetch.html, base_url=fetch.final_url)
+                if not markdown.strip():
+                    raise ValueError("conversion produced empty output")
+                content_hash = compute_content_hash(markdown)
+                if content_hash in seen_hashes:
+                    duplicate_count += 1
+                    if not quiet:
+                        console.print(f"[dim]⏭  Skipped (duplicate): {page_url}[/dim]")
+                    continue
+                seen_hashes.add(content_hash)
+                document = _render_output(fetch, markdown, metadata, settings)
+            except Exception as e:
                 if not quiet:
-                    console.print(f"[dim]⏭  Skipped (duplicate): {page_url}[/dim]")
+                    console.print(f"[red]✗[/red] Failed to convert {page_url}: {e}")
+                failed.append(page_url)
                 continue
-            seen_hashes.add(content_hash)
-            document = _render_output(fetch, markdown, metadata, settings)
-        except Exception as e:
+
+            filename = url_to_filename(page_url, base_url=url) + settings.output.extension
+            output_path = output_dir / filename
+
+            if output_path.exists() and not settings.output.overwrite:
+                if not quiet:
+                    console.print(f"[yellow]⚠[/yellow] Skipped (exists): {output_path}")
+                skipped_count += 1
+                continue
+
+            output_path.write_text(document, encoding="utf-8")
+            saved_count += 1
+            manifest.append(
+                {
+                    "url": page_url,
+                    "file": filename,
+                    "content_hash": content_hash,
+                    "fetched_at": fetch.fetched_at,
+                    "status_code": fetch.status_code,
+                    "title": metadata.get("title") or "",
+                }
+            )
+
             if not quiet:
-                console.print(f"[red]✗[/red] Failed to convert {page_url}: {e}")
-            failed.append(page_url)
-            continue
-
-        # Generate output filename
-        filename = url_to_filename(page_url, base_url=url) + settings.output.extension
-        output_path = output_dir / filename
-
-        # Check if file exists
-        if output_path.exists() and not settings.output.overwrite:
-            if not quiet:
-                console.print(f"[yellow]⚠[/yellow] Skipped (exists): {output_path}")
-            skipped_count += 1
-            continue
-
-        # Save output
-        output_path.write_text(document, encoding="utf-8")
-        saved_count += 1
-        manifest.append(
-            {
-                "url": page_url,
-                "file": filename,
-                "content_hash": content_hash,
-                "fetched_at": fetch.fetched_at,
-                "status_code": fetch.status_code,
-                "title": metadata.get("title") or "",
-            }
-        )
-
-        if not quiet:
-            console.print(f"[green]✓[/green] Saved: {output_path}")
+                console.print(f"[green]✓[/green] Saved: {output_path}")
+    finally:
+        if archiver is not None:
+            archiver.close()
 
     # Write crawl manifest for auditing / downstream bookkeeping
     if manifest:
@@ -664,8 +665,6 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
         if not quiet:
             console.print(f"[dim]📋 Manifest: {manifest_path}[/dim]")
 
-    if archiver is not None:
-        archiver.close()
     if not quiet:
         console.print()
         console.print("[green]✅[/green] Complete!")
