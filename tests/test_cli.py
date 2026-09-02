@@ -1,5 +1,6 @@
 """End-to-end CLI tests against a localhost HTTP server."""
 
+import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -217,6 +218,16 @@ class TestSinglePage:
         assert meta["ai_txt"]["data"] == "Allow"
         assert meta["ai_txt"]["disallow"] == "/private/"
         assert meta["llms_txt"] is True
+
+    def test_data_card_written(self, server, tmp_path):
+        result = run_cli([f"{server}/page", "-o", str(tmp_path), "-f", "-q"])
+        assert result.exit_code == 0
+        card = json.loads((tmp_path / "data-card.json").read_text())
+        assert card["schema_version"] == "1.0"
+        assert card["job"]["mode"] == "single"
+        assert card["summary"]["pages"] == 1
+        assert card["pages"][0]["url"] == f"{server}/page"
+        assert card["pages"][0]["content_hash"]
 
     def test_empty_page_still_written(self, server, tmp_path):
         """Pages with minimal content should still be captured."""

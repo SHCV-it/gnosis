@@ -81,6 +81,8 @@ def build_frontmatter(
         frontmatter["published_time"] = metadata["published_time"]
     if metadata.get("modified_time"):
         frontmatter["modified_time"] = metadata["modified_time"]
+    if metadata.get("license"):
+        frontmatter["license"] = metadata["license"]
 
     if metadata.get("retention_ratio") is not None:
         frontmatter["retention_ratio"] = metadata["retention_ratio"]

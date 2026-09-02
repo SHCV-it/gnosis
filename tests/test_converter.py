@@ -279,3 +279,33 @@ def test_content_protected_with_class_selector():
     md = converter.convert(html)
     assert "Cookie API docs" in md
     assert "sidebar noise" not in md
+
+
+def test_extract_license_from_meta():
+    converter = HTMLToMarkdownConverter()
+    html = '<html><head><meta name="license" content="CC-BY 4.0"></head><body><main>'
+    html += "content " * 40 + "</main></body></html>"
+    meta = converter.extract_metadata(html)
+    assert meta["license"] == "CC-BY 4.0"
+
+
+def test_extract_license_from_link_rel():
+    converter = HTMLToMarkdownConverter()
+    html = (
+        '<html><head><link rel="license" '
+        'href="https://creativecommons.org/licenses/by/4.0/"></head>'
+        "<body><main>" + "content " * 40 + "</main></body></html>"
+    )
+    meta = converter.extract_metadata(html)
+    assert meta["license"] == "https://creativecommons.org/licenses/by/4.0/"
+
+
+def test_extract_license_not_substring_matched():
+    """Regression (reviewer P2): rel values merely CONTAINING 'license' must not match."""
+    converter = HTMLToMarkdownConverter()
+    html = (
+        '<html><head><link rel="licenses" href="https://x"></head>'
+        "<body><main>" + "content " * 40 + "</main></body></html>"
+    )
+    meta = converter.extract_metadata(html)
+    assert meta["license"] == ""

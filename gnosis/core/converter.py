@@ -241,6 +241,12 @@ class HTMLToMarkdownConverter:
         if not language:
             language = meta(property="og:locale")
 
+        license_val = meta(name="license") or meta(property="og:license")
+        if not license_val:
+            link = soup.find("link", rel="license")
+            if link and link.get("href"):
+                license_val = str(link["href"]).strip()
+
         return {
             "title": title,
             "author": meta(name="author")
@@ -251,6 +257,7 @@ class HTMLToMarkdownConverter:
             "site_name": meta(property="og:site_name"),
             "published_time": meta(property="article:published_time"),
             "modified_time": meta(property="article:modified_time"),
+            "license": license_val,
         }
 
     def _dedupe_shadow_tables(self, soup: BeautifulSoup) -> None:
