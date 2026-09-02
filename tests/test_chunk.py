@@ -50,3 +50,29 @@ def test_manifest_fields():
     assert "chunk_id" in entry
     assert "heading_path" in entry
     assert "char_count" in entry
+
+
+def test_pre_heading_content_preserved():
+    md = "Intro before any heading.\n\n" + MD
+    chunks = chunk_markdown(md)
+    assert chunks[0].heading_path == []
+    assert "Intro before any heading" in chunks[0].content
+
+
+def test_offsets_are_document_relative():
+    md = "Intro.\n\n" + MD
+    chunks = chunk_markdown(md)
+    for c in chunks:
+        assert c.char_count == c.end - c.start
+        assert c.content in md
+    # second chunk (first heading) must start after the intro, not at 0
+    assert chunks[1].start > 0
+
+
+def test_oversized_split_offsets_document_relative():
+    big = "# Big\n\n" + "\n\n".join("p" * 100 for _ in range(10))
+    chunks = chunk_markdown(big, max_chars=300)
+    split = [c for c in chunks if "." in c.chunk_id]
+    assert split
+    assert any(c.start > 0 for c in split)  # document-relative, not all part-relative 0
+    assert all(c.char_count == c.end - c.start for c in split)

@@ -775,7 +775,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
 
     # Meaningful exit codes for schedulers: 0 = at least one page saved,
     # 1 = nothing saved at all.
-    if saved_count == 0 and skipped_count == 0:
+    if saved_count == 0 and skipped_count == 0 and duplicate_count == 0:
         sys.exit(1)
 
 
