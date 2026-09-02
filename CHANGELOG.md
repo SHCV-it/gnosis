@@ -11,6 +11,17 @@
   TLS SNI/certificate verification still uses the original hostname, so pinning
   does not weaken TLS.
 
+## [1.4.0] - 2026-09-02
+
+### Added
+- Token-aware chunking: `max_tokens` sizing (dependency-free heuristic), boundary-anchored overlap, `token_count` + `chunk_sha256` in the manifest
+
+### Security
+- IP-pinned transport closes the SSRF DNS-rebinding TOCTOU (resolve once, dial validated IPs; allow-list classifier closes CGNAT/6to4/Teredo/NAT64)
+
+### Changed
+- llm/qmd integrations importable + tested without heavy deps; per-host rate limiting
+
 ## [1.3.0] - 2026-09-02
 
 ### Added
