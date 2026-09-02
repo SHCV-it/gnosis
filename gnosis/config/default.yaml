@@ -15,7 +15,7 @@ downloader:
   retries: 3
 
   # User-Agent string for HTTP requests
-  user_agent: "Gnosis/1.1 (Website to Markdown converter)"
+  user_agent: "Gnosis/1.2 (Website to Markdown converter)"
 
   # Minimum delay between requests in milliseconds (rate limiting)
   rate_limit_ms: 500

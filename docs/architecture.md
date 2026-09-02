@@ -17,7 +17,7 @@ capture ─▶ extract ─▶ provenance ─▶ archive ─▶ emit
 | `core/converter.py` | HTML → clean Markdown (boilerplate stripping, GFM tables, metadata) |
 | `core/provenance.py` | YAML frontmatter, `content_hash` + `bytes_sha256` |
 | `core/archive.py` | WARC + content-addressed store |
-| `core/crawler.py` | BFS crawl with scope, concurrency, and resume (`skip_urls`) |
+| `core/crawler.py` | BFS crawl with scope, concurrency, and resume (checkpoint dedup) |
 | `core/robots.py` | robots.txt (RFC 9309) + Crawl-delay |
 | `core/network.py` | SSRF / private-network guard |
 | `core/render.py` | Optional JS renderer (sidecar subprocess) |

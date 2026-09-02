@@ -16,7 +16,7 @@ One canonical record flows through every stage; every heavy capability is an opt
 
 ```
 CaptureRecord {
-  raw_bytes,  bytes_sha256,        # wire truth (hash the BYTES, not the markdown)
+  raw_bytes,  bytes_sha256,        # response-body truth (hash the BYTES, not the markdown)
   content_sha256,                  # hash of derived Markdown (secondary)
   content_type, final_url, requested_url, redirect_chain,
   status_code, response_headers, fetched_at,

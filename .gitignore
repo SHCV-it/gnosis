@@ -37,3 +37,6 @@ _manifest.json
 .DS_Store
 Thumbs.db
 uv.lock
+.gnosis-checkpoint.json
+.gnosis-store/
+archive.warc.gz

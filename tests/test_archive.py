@@ -78,3 +78,16 @@ def test_dedup_same_bytes(tmp_path):
     assert len(list((tmp_path / ".gnosis-store").iterdir())) == 1
     with open(tmp_path / "archive.warc.gz", "rb") as f:
         assert len(list(ArchiveIterator(f))) == 2
+
+
+def test_warc_appends_across_reopen(tmp_path):
+    fetch = make_fetch()
+    bs = compute_bytes_hash(fetch.raw_bytes)
+    a1 = Archiver(tmp_path)
+    a1.archive(fetch, bs)
+    a1.close()
+    a2 = Archiver(tmp_path)
+    a2.archive(fetch, bs)
+    a2.close()
+    with open(tmp_path / "archive.warc.gz", "rb") as f:
+        assert len(list(ArchiveIterator(f))) == 2

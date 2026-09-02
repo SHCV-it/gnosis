@@ -299,3 +299,17 @@ class TestCrawl:
         )
         assert result.exit_code == 0
         assert len(list(tmp_path.glob("*.md"))) >= 3
+
+
+    def test_resume_rediscovers_pages(self, server, tmp_path):
+        cfg1 = tmp_path / "cfg1.yaml"
+        cfg1.write_text("crawler:\n  concurrent_requests: 1\n  max_pages: 2\n  max_depth: 1")
+        r1 = run_cli([f"{server}/hub", "--all", "-o", str(tmp_path), "-f", "-q", "-c", str(cfg1)])
+        assert r1.exit_code == 0
+        assert len(list(tmp_path.glob("*.md"))) == 2
+
+        cfg2 = tmp_path / "cfg2.yaml"
+        cfg2.write_text("crawler:\n  concurrent_requests: 1\n  max_pages: 3\n  max_depth: 1")
+        r2 = run_cli([f"{server}/hub", "--all", "-o", str(tmp_path), "-q", "-c", str(cfg2)])
+        assert r2.exit_code == 0
+        assert len(list(tmp_path.glob("*.md"))) >= 3

@@ -78,7 +78,7 @@ class DownloaderSettings:
 
     timeout: int = 30
     retries: int = 3
-    user_agent: str = "Gnosis/1.1 (Website to Markdown converter)"
+    user_agent: str = "Gnosis/1.2 (Website to Markdown converter)"
     rate_limit_ms: int = 500
     respect_robots: bool = True
     allow_private_network: bool = False
