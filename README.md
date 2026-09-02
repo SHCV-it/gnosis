@@ -9,6 +9,7 @@
   <a href="https://pypi.org/project/gnosis-markdown/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/gnosis-markdown?color=blue"></a>
   <a href="https://pypi.org/project/gnosis-markdown/"><img alt="Python Versions" src="https://img.shields.io/pypi/pyversions/gnosis-markdown?color=blue"></a>
   <a href="https://github.com/SHCV-it/gnosis/actions"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/SHCV-it/gnosis/ci.yml?branch=main"></a>
+  <a href="https://shcv-it.github.io/gnosis/"><img alt="Docs" src="https://img.shields.io/badge/docs-shcv--it.github.io-blue"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 

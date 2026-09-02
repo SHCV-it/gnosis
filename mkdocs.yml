@@ -1,0 +1,25 @@
+site_name: Gnosis
+site_description: Web scraper & crawler → clean Markdown with byte-level provenance for LLM/RAG knowledge bases
+site_url: https://shcv-it.github.io/gnosis/
+repo_url: https://github.com/SHCV-it/gnosis
+repo_name: SHCV-it/gnosis
+
+theme:
+  name: material
+  palette:
+    primary: indigo
+  features:
+    - navigation.sections
+    - search.suggest
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Provenance: provenance.md
+  - CLI Reference: cli-reference.md
+  - Architecture: architecture.md
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - admonition

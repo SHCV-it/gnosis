@@ -1,0 +1,9 @@
+# Gnosis Docs
+
+> Web scraper & crawler → clean Markdown with byte-level provenance for LLM/RAG.
+
+- [Home](https://shcv-it.github.io/gnosis/)
+- [Getting Started](https://shcv-it.github.io/gnosis/getting-started/)
+- [Provenance](https://shcv-it.github.io/gnosis/provenance/)
+- [CLI Reference](https://shcv-it.github.io/gnosis/cli-reference/)
+- [Architecture](https://shcv-it.github.io/gnosis/architecture/)
