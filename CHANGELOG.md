@@ -11,6 +11,14 @@
   TLS SNI/certificate verification still uses the original hostname, so pinning
   does not weaken TLS.
 
+## [1.4.1] - 2026-09-02
+
+### Fixed
+- rate limiter keyed on netloc (was keyed on full URL, never fired — killed politeness + robots Crawl-delay compliance)
+- `retention_ratio` now text-vs-text (was markdown-chars/source-chars, could report >1.0 on gutted pages)
+- boilerplate word-matching no longer strips elements inside the main content
+- capture-quality gate: `low_content` flag in frontmatter
+
 ## [1.4.0] - 2026-09-02
 
 ### Added
