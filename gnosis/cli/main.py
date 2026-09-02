@@ -30,6 +30,7 @@ from gnosis.core.datacard import write_data_card
 from gnosis.core.downloader import Downloader, RobotsDisallowed
 from gnosis.core.llms import fetch_sitemap_urls, render_llms_full, render_llms_txt
 from gnosis.core.network import PrivateNetworkBlocked
+from gnosis.core.policy import PolicyEngine
 from gnosis.core.provenance import build_frontmatter, compute_bytes_hash, compute_content_hash, render_document
 from gnosis.core.render import ObscuraRenderer, RenderError
 
@@ -597,6 +598,7 @@ def _page_record(fetch, markdown: str, metadata: dict) -> dict:
         "license": metadata.get("license") or None,
         "ai_txt": metadata.get("ai_txt"),
         "llms_txt": bool(metadata.get("llms_txt")),
+        "policy_decision": metadata.get("policy_decision"),
     }
     if fetch.url != fetch.final_url:
         record["requested_url"] = fetch.url
@@ -616,6 +618,7 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
     downloader = Downloader(settings.downloader)
     converter = HTMLToMarkdownConverter(settings.converter, verbose=verbose)
     renderer = _build_renderer(settings)
+    policy = PolicyEngine(settings.policies)
 
     if not quiet:
         console.print(f"[blue]📥[/blue] Downloading: {url}")
@@ -659,6 +662,18 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
     consent = await fetch_host_consent(fetch.final_url, downloader)
     if consent:
         metadata.update(consent)
+    decision = policy.evaluate(fetch.final_url, metadata)
+    if decision.rule:
+        metadata["policy_decision"] = {
+            "rule": decision.rule,
+            "reason": decision.reason,
+            "allowed": decision.allowed,
+        }
+    if not decision.allowed:
+        if not quiet:
+            console.print(f"[red]✗[/red] Blocked by policy '{decision.rule}': {decision.reason}")
+        _write_failed_data_card(settings, fetch.final_url, f"policy: {decision.reason}")
+        sys.exit(1)
     document = _render_output(fetch, markdown, metadata, settings)
 
     # Generate output filename
@@ -754,6 +769,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     downloader = Downloader(settings.downloader)
     converter = HTMLToMarkdownConverter(settings.converter, verbose=verbose)
     crawler = Crawler(settings.crawler, downloader)
+    policy = PolicyEngine(settings.policies)
     archiver = (
         Archiver(Path(settings.output.directory), user_agent=settings.downloader.user_agent)
         if settings.output.warc
@@ -803,6 +819,26 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                 consent = await fetch_host_consent(fetch.final_url, downloader)
                 if consent:
                     metadata.update(consent)
+                decision = policy.evaluate(fetch.final_url, metadata)
+                if decision.rule:
+                    metadata["policy_decision"] = {
+                        "rule": decision.rule,
+                        "reason": decision.reason,
+                        "allowed": decision.allowed,
+                    }
+                if not decision.allowed:
+                    page_records.append(
+                        {
+                            "url": fetch.final_url,
+                            "status_code": None,
+                            "error": f"policy: {decision.reason}",
+                            "raw_bytes": 0,
+                            "markdown_chars": 0,
+                        }
+                    )
+                    if not quiet:
+                        console.print(f"[red]✗[/red] Blocked by policy '{decision.rule}': {decision.reason}")
+                    continue
                 document = _render_output(fetch, markdown, metadata, settings)
             except Exception as e:
                 if not quiet:

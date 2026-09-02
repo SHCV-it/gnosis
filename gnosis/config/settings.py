@@ -248,6 +248,7 @@ class Settings:
     output: OutputSettings = field(default_factory=OutputSettings)
     qmd: QMDSettings = field(default_factory=QMDSettings)
     render: RenderSettings = field(default_factory=RenderSettings)
+    policies: list = field(default_factory=list)
 
 
 def load_config(config_path: Optional[Path] = None) -> Settings:
@@ -372,6 +373,7 @@ def load_config(config_path: Optional[Path] = None) -> Settings:
             timeout=rd.get("timeout", settings.render.timeout),
         )
 
+    settings.policies = data.get("policies") or []
     return settings
 
 

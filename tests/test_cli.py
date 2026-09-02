@@ -126,6 +126,18 @@ class _Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if self.path == "/proprietary":
+            body = (
+                b'<html><head><meta name="license" content="All Rights Reserved"></head>'
+                b'<body><main><p>Proprietary content page for policy testing, with enough '
+                b'words to pass the minimum threshold check in the converter.</p></main></body></html>'
+            )
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path == "/ai.txt":
             body = b"Training: Allow\nData: Allow\nDisallow: /private/\n"
             self.send_response(200)
@@ -228,6 +240,22 @@ class TestSinglePage:
         assert card["summary"]["pages"] == 1
         assert card["pages"][0]["url"] == f"{server}/page"
         assert card["pages"][0]["content_hash"]
+
+    def test_policy_deny_blocks_and_records(self, server, tmp_path):
+        cfg = tmp_path / "policy.yaml"
+        cfg.write_text(
+            "policies:\n"
+            "  - name: no-proprietary\n"
+            "    deny_if:\n"
+            "      license: [\"All Rights Reserved\"]\n"
+            "    reason: proprietary content\n"
+        )
+        result = run_cli(
+            [f"{server}/proprietary", "-o", str(tmp_path), "-f", "-q", "--config", str(cfg)]
+        )
+        assert result.exit_code != 0
+        card = json.loads((tmp_path / "data-card.json").read_text())
+        assert card["pages"][0]["error"].startswith("policy:")
 
     def test_empty_page_still_written(self, server, tmp_path):
         """Pages with minimal content should still be captured."""
