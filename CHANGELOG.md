@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.0] - 2026-09-02
+
+### Added
+- Extraction provenance: `retention_ratio` + `stripped_elements` in the frontmatter (the audit trail now covers the transform, not just the bytes)
+- Capture-quality warning when a page yields <150 chars (bot-block/truncation signal)
+
+### Changed
+- Crawl archives to WARC after content dedup (no duplicate records on resume)
+- Removed dead code (crawler skip_urls, unused protocols, unused param); get_running_loop
+
 ## [1.2.1] - 2026-09-02
 
 ### Fixed
