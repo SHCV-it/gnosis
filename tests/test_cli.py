@@ -261,6 +261,15 @@ class TestSinglePage:
         assert card["pages"][0]["policy_decision"]["allowed"] is False
         assert card["pages"][0]["policy_decision"]["rule"] == "no-proprietary"
 
+    def test_format_json_export(self, server, tmp_path):
+        result = run_cli([f"{server}/page", "-o", str(tmp_path), "-f", "-q", "--format", "json"])
+        assert result.exit_code == 0
+        data = json.loads((tmp_path / "documents.json").read_text())
+        assert len(data) == 1
+        assert data[0]["url"] == f"{server}/page"
+        assert len(data[0]["content_hash"]) == 64
+        assert "Fixture" in data[0]["markdown"]
+
     def test_empty_page_still_written(self, server, tmp_path):
         """Pages with minimal content should still be captured."""
         result = run_cli([f"{server}/empty", "-o", str(tmp_path), "-f", "-q"])

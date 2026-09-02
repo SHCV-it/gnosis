@@ -28,6 +28,7 @@ from gnosis.core.converter import MIN_CONTENT_THRESHOLD, HTMLToMarkdownConverter
 from gnosis.core.crawler import Crawler
 from gnosis.core.datacard import write_data_card
 from gnosis.core.downloader import Downloader, RobotsDisallowed
+from gnosis.core.export import export_records
 from gnosis.core.llms import fetch_sitemap_urls, render_llms_full, render_llms_txt
 from gnosis.core.network import PrivateNetworkBlocked
 from gnosis.core.policy import PolicyEngine
@@ -319,6 +320,12 @@ def _render_output(fetch, markdown: str, metadata: dict, settings: Settings) -> 
     help="Treat URL as a sitemap.xml: discover and list its page URLs.",
 )
 @click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["json", "jsonl", "parquet"]),
+    help="Also export documents in this format (documents.<ext>).",
+)
+@click.option(
     "--sign",
     "sign",
     is_flag=True,
@@ -354,6 +361,7 @@ def cli(
     sitemap: bool,
     sign: bool,
     sign_key: Optional[Path],
+    fmt: Optional[str],
 ):
     """
     Download websites and convert them to LLM-friendly markdown.
@@ -428,9 +436,9 @@ def cli(
     if dry_run:
         asyncio.run(discover_pages_mode(url, settings, quiet, verbose))
     elif crawl_all:
-        asyncio.run(crawl_and_convert(url, settings, quiet, verbose))
+        asyncio.run(crawl_and_convert(url, settings, quiet, verbose, fmt))
     else:
-        asyncio.run(download_and_convert(url, settings, quiet, verbose))
+        asyncio.run(download_and_convert(url, settings, quiet, verbose, fmt))
 
 
 def run_qmd_integration(
@@ -605,6 +613,15 @@ def _page_record(fetch, markdown: str, metadata: dict) -> dict:
     return record
 
 
+def _export_record(fetch, markdown: str, metadata: dict) -> dict:
+    """Flat record for JSON/JSONL/Parquet export (nested fields stringified)."""
+    fm = build_frontmatter(fetch, markdown, metadata)
+    record = {"markdown": markdown}
+    for key, value in fm.items():
+        record[key] = json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list)) else value
+    return record
+
+
 def _write_failed_data_card(settings: Settings, url: str, error: str, policy_decision=None) -> None:
     record = {"url": url, "status_code": None, "error": error, "raw_bytes": 0, "markdown_chars": 0}
     if policy_decision:
@@ -616,7 +633,9 @@ def _write_failed_data_card(settings: Settings, url: str, error: str, policy_dec
     )
 
 
-async def download_and_convert(url: str, settings: Settings, quiet: bool, verbose: bool) -> None:
+async def download_and_convert(
+    url: str, settings: Settings, quiet: bool, verbose: bool, fmt: str | None = None
+) -> None:
     """Download a single page and convert to markdown."""
     downloader = Downloader(settings.downloader)
     converter = HTMLToMarkdownConverter(settings.converter, verbose=verbose)
@@ -703,6 +722,8 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
         [_page_record(fetch, markdown, metadata)],
         {"source": url, "mode": "single", "generator": f"gnosis/{__version__}"},
     )
+    if fmt:
+        export_records([_export_record(fetch, markdown, metadata)], output_dir, fmt)
 
     if not quiet:
         console.print(f"[green]✓[/green] Saved: {output_path}")
@@ -771,7 +792,7 @@ async def discover_pages_mode(url: str, settings: Settings, quiet: bool, verbose
                     console.print(f"  ... and {total_count - 5} more")
 
 
-async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: bool) -> None:
+async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: bool, fmt: str | None = None) -> None:
     """Crawl all child pages and convert each to markdown."""
     downloader = Downloader(settings.downloader)
     converter = HTMLToMarkdownConverter(settings.converter, verbose=verbose)
@@ -798,6 +819,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     failed: list[str] = []
     seen_hashes, manifest = load_checkpoint(output_dir)
     page_records: list[dict] = []
+    export_list: list[dict] = []
 
     try:
         async for page_url, fetch in crawler.crawl(url):
@@ -871,6 +893,8 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                 _write_chunk_manifest(markdown, compute_content_hash(markdown), output_path, page_url)
             saved_count += 1
             page_records.append(_page_record(fetch, markdown, metadata))
+            if fmt:
+                export_list.append(_export_record(fetch, markdown, metadata))
             manifest.append(
                 {
                     "url": page_url,
@@ -900,6 +924,8 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     )
     if not quiet:
         console.print(f"[dim]🃏 Data card: {output_dir / 'data-card.json'}[/dim]")
+    if fmt and export_list:
+        export_records(export_list, output_dir, fmt)
     # Write crawl manifest for auditing / downstream bookkeeping
     if manifest:
         manifest_path = output_dir / "_manifest.json"
