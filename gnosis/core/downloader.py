@@ -81,9 +81,9 @@ class Downloader:
             settings: Downloader settings. Uses defaults if None.
         """
         self.settings = settings or DownloaderSettings()
-        self._last_request_times: dict[str, float] = {}
+        self._last_request_times: dict[str | None, float] = {}
         self._client: Optional[httpx.AsyncClient] = None
-        self._rate_lock: asyncio.Lock = asyncio.Lock()
+        self._host_locks: dict[str | None, asyncio.Lock] = {}
         self._robots = RobotsChecker(
             self.settings.user_agent,
             respect=self.settings.respect_robots,
@@ -114,18 +114,20 @@ class Downloader:
         return self._client
 
     async def _rate_limit(self, url: str | None = None) -> None:
-        """Apply rate limiting between requests (safe for concurrent use)."""
+        """Apply rate limiting between requests (per-host; safe for concurrent use)."""
         delay_ms = self.settings.rate_limit_ms
         key: str | None = None
         if url is not None:
-            key = urlparse(url).netloc
+            key = urlparse(url).hostname or urlparse(url).netloc
             crawl_delay = await self._robots.crawl_delay(url)
             if crawl_delay:
                 delay_ms = max(delay_ms, int(crawl_delay * 1000))
         if delay_ms <= 0:
             return
 
-        async with self._rate_lock:
+        # Per-host lock: a slow host's Crawl-delay must not stall other hosts.
+        lock = self._host_locks.setdefault(key, asyncio.Lock())
+        async with lock:
             now = asyncio.get_running_loop().time()
             last = self._last_request_times.get(key, 0.0)
             elapsed_ms = (now - last) * 1000
