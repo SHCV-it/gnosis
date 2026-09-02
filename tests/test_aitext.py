@@ -87,3 +87,20 @@ def test_fetch_host_consent_absent_is_empty(server):
             return await fetch_host_consent("http://127.0.0.1:1/none", dl)
 
     assert asyncio.run(_run()) == {}
+
+
+def test_parse_ai_txt_comments_and_empty_values():
+    """Regression (reviewer P2): inline # comments stripped, empty values skipped,
+    keys lowercased, `allow` directive captured."""
+    text = (
+        "# full-line comment\n"
+        "Training: Allow  # trailing note\n"
+        "Data:\n"
+        "allow: /api/\n"
+        "DISALLOW: /private/\n"
+    )
+    d = parse_ai_txt(text)
+    assert d["training"] == "Allow"
+    assert d["allow"] == "/api/"
+    assert d["disallow"] == "/private/"
+    assert "data" not in d  # empty value skipped
