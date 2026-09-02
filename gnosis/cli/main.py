@@ -26,6 +26,7 @@ from gnosis.core.archive import Archiver
 from gnosis.core.checkpoint import load_checkpoint, save_checkpoint
 from gnosis.core.converter import MIN_CONTENT_THRESHOLD, HTMLToMarkdownConverter
 from gnosis.core.crawler import Crawler
+from gnosis.core.datacard import write_data_card
 from gnosis.core.downloader import Downloader, RobotsDisallowed
 from gnosis.core.llms import fetch_sitemap_urls, render_llms_full, render_llms_txt
 from gnosis.core.network import PrivateNetworkBlocked
@@ -581,6 +582,24 @@ async def _discover_sitemap(url: str, settings: Settings) -> list[str]:
         await downloader.close()
 
 
+def _page_record(fetch, markdown: str, metadata: dict) -> dict:
+    """Assemble the per-page record for a data card."""
+    return {
+        "url": fetch.final_url,
+        "status_code": fetch.status_code,
+        "raw_bytes": len(fetch.raw_bytes),
+        "markdown_chars": len(markdown),
+        "content_hash": compute_content_hash(markdown),
+        "bytes_sha256": compute_bytes_hash(fetch.raw_bytes),
+        "retention_ratio": metadata.get("retention_ratio"),
+        "stripped_elements": metadata.get("stripped_elements"),
+        "low_content": bool(metadata.get("low_content")),
+        "license": metadata.get("license") or None,
+        "ai_txt": metadata.get("ai_txt"),
+        "llms_txt": bool(metadata.get("llms_txt")),
+    }
+
+
 async def download_and_convert(url: str, settings: Settings, quiet: bool, verbose: bool) -> None:
     """Download a single page and convert to markdown."""
     downloader = Downloader(settings.downloader)
@@ -643,6 +662,11 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
     output_path.write_text(document, encoding="utf-8")
     if settings.output.chunk:
         _write_chunk_manifest(markdown, compute_content_hash(markdown), output_path, fetch.final_url)
+    write_data_card(
+        output_dir,
+        [_page_record(fetch, markdown, metadata)],
+        {"source": url, "mode": "single", "generator": f"gnosis/{__version__}"},
+    )
 
     if not quiet:
         console.print(f"[green]✓[/green] Saved: {output_path}")
@@ -736,6 +760,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     duplicate_count = 0
     failed: list[str] = []
     seen_hashes, manifest = load_checkpoint(output_dir)
+    page_records: list[dict] = []
 
     try:
         async for page_url, fetch in crawler.crawl(url):
@@ -784,6 +809,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
             if settings.output.chunk:
                 _write_chunk_manifest(markdown, compute_content_hash(markdown), output_path, page_url)
             saved_count += 1
+            page_records.append(_page_record(fetch, markdown, metadata))
             manifest.append(
                 {
                     "url": page_url,
@@ -802,6 +828,14 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
         if archiver is not None:
             archiver.close()
 
+    if page_records:
+        write_data_card(
+            output_dir,
+            page_records,
+            {"source": url, "mode": "crawl", "generator": f"gnosis/{__version__}"},
+        )
+        if not quiet:
+            console.print(f"[dim]🃏 Data card: {output_dir / 'data-card.json'}[/dim]")
     # Write crawl manifest for auditing / downstream bookkeeping
     if manifest:
         manifest_path = output_dir / "_manifest.json"
