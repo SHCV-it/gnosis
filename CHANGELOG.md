@@ -11,6 +11,14 @@
   TLS SNI/certificate verification still uses the original hostname, so pinning
   does not weaken TLS.
 
+## [1.4.3] - 2026-09-02
+
+### Fixed
+- WARC now writes `warcinfo` + `request` records (was response-only) — #1
+- sitemap XML hardened against entity expansion via `defusedxml` — #2
+- token-aware chunking hard-enforces `max_tokens` on unbreakable blocks — #3
+- rate limiter is per-host (hostname key); a slow host no longer stalls others — #4
+
 ## [1.4.2] - 2026-09-02
 
 ### Fixed
