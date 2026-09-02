@@ -91,6 +91,40 @@ class _Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(REDIRECT_HTML)
             return
+        if self.path == "/hub":
+            body = (
+                b'<html><body><main><h1>Hub</h1><p>Substantial hub content for the crawl test, '
+                b'long enough to pass the converter and produce useful markdown output.</p>'
+                b'<a href="/hub/a">a</a><a href="/hub/b">b</a></main></body></html>'
+            )
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path == "/hub/a":
+            body = (
+                b'<html><body><main><h1>Hub A</h1><p>Distinct content for hub page A '
+                b'with enough text to convert into markdown output.</p></main></body></html>'
+            )
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path == "/hub/b":
+            body = (
+                b'<html><body><main><h1>Hub B</h1><p>Different content for hub page B '
+                b'so dedup does not collapse the crawl into fewer files.</p></main></body></html>'
+            )
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("ETag", '"fixture-etag"')
@@ -259,8 +293,9 @@ class TestCrawl:
     def test_crawl_with_concurrency_two(self, server, tmp_path):
         """Concurrent crawl should work without deadlocks."""
         cfg = tmp_path / "cfg.yaml"
-        cfg.write_text("crawler:\n  concurrent_requests: 2\n  max_pages: 2\n  max_depth: 0")
+        cfg.write_text("crawler:\n  concurrent_requests: 2\n  max_pages: 3\n  max_depth: 1")
         result = run_cli(
-            [f"{server}/page", "--all", "-o", str(tmp_path), "-f", "-q", "-c", str(cfg)]
+            [f"{server}/hub", "--all", "-o", str(tmp_path), "-f", "-q", "-c", str(cfg)]
         )
         assert result.exit_code == 0
+        assert len(list(tmp_path.glob("*.md"))) >= 3

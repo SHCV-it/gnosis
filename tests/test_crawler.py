@@ -1,7 +1,10 @@
 """Tests for crawler link extraction and URL handling."""
 
+import asyncio
+
 from gnosis.config.settings import CrawlerSettings
 from gnosis.core.crawler import Crawler
+from gnosis.core.downloader import FetchResult
 
 
 def extract(html: str, page_url: str, base_domain: str, base_path: str) -> list[str]:
@@ -82,3 +85,43 @@ class TestUrlNormalization:
             crawler._normalize_url("https://example.com/docs#frag")
             == "https://example.com/docs"
         )
+
+
+
+class _FakeDownloader:
+    def __init__(self):
+        self.fetched = []
+
+    async def fetch_result(self, url):
+        self.fetched.append(url)
+        return FetchResult(
+            url=url,
+            final_url=url,
+            status_code=200,
+            html="<a href='/a'>a</a>",
+            fetched_at="2026-01-01T00:00:00Z",
+            raw_bytes=b"<html></html>",
+        )
+
+
+def test_crawl_skip_start_url():
+    async def _run():
+        dl = _FakeDownloader()
+        crawler = Crawler(CrawlerSettings(max_depth=0), dl)
+        urls = [u async for u, _ in crawler.crawl("http://x.test/", skip_urls={"http://x.test/"})]
+        return urls, dl.fetched
+
+    urls, fetched = asyncio.run(_run())
+    assert fetched == []
+    assert urls == []
+
+
+def test_crawl_no_skip_fetches():
+    async def _run():
+        dl = _FakeDownloader()
+        crawler = Crawler(CrawlerSettings(max_depth=0), dl)
+        urls = [u async for u, _ in crawler.crawl("http://x.test/")]
+        return urls, dl.fetched
+
+    urls, fetched = asyncio.run(_run())
+    assert fetched == ["http://x.test/"]

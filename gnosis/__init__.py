@@ -5,4 +5,4 @@ Downloads websites and converts them to clean, LLM-friendly markdown.
 """
 
 __version__ = "1.1.2"
-__author__ = "Steffen Hoehne, SHCV.IT"
+__author__ = "Steffen Hoehne, Ali Zahid Raja, SHCV.IT"

@@ -683,9 +683,10 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     failed: list[str] = []
     llms_pages: list[dict] = []
     seen_hashes, manifest = load_checkpoint(output_dir)
+    seen_urls = {m["url"] for m in manifest}
 
     try:
-        async for page_url, fetch in crawler.crawl(url):
+        async for page_url, fetch in crawler.crawl(url, skip_urls=seen_urls):
             if not quiet:
                 console.print(f"[blue]📥[/blue] Downloaded: {page_url}")
             if archiver is not None:

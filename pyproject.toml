@@ -11,6 +11,7 @@ license = "MIT"
 requires-python = ">=3.12"
 authors = [
     {name = "Steffen Hoehne", email = "steffen.hoehne@shcv.it"},
+    {name = "Ali Zahid Raja"},
 ]
 keywords = ["markdown", "web-scraping", "crawler", "html-to-markdown", "knowledge-base", "llm", "rag", "warc", "provenance", "scraping"]
 classifiers = [

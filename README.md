@@ -206,4 +206,4 @@ issues privately (see [SECURITY](SECURITY.md)). See
 
 MIT — see [LICENSE](LICENSE).
 
-**Author:** Steffen Hoehne, [SHCV.IT](https://shcv.it)
+**Authors:** Steffen Hoehne & Ali Zahid Raja, [SHCV.IT](https://shcv.it)
