@@ -215,7 +215,7 @@ class Crawler:
 
             if parsed.netloc != base_domain:
                 continue
-            if not parsed.path.startswith(base_path):
+            if not (parsed.path == base_path or parsed.path.startswith(base_path + "/")):
                 continue
 
             path_lower = parsed.path.lower()

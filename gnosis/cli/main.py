@@ -63,11 +63,8 @@ def url_to_filename(url: str, base_url: Optional[str] = None) -> str:
     base = f"{domain}-{path_slug}" if path else domain
 
     # Append short hash when query parameters are present to avoid filename collisions
-    if parsed.query:
-        url_hash = hashlib.sha256(url.encode()).hexdigest()[:8]
-        return f"{base}-{url_hash}"
-
-    return base
+    url_hash = hashlib.sha256(url.encode()).hexdigest()[:8]
+    return f"{base}-{url_hash}"
 
 
 def url_to_collection_name(url: str) -> str:

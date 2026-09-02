@@ -45,6 +45,10 @@ qmd = [
 docs = [
     "markitdown>=0.1",
 ]
+test = [
+    "pytest>=8.0.0",
+    "python-frontmatter>=1.0.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/SHCV-it/gnosis"

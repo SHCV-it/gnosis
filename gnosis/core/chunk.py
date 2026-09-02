@@ -26,7 +26,6 @@ class Chunk:
 def chunk_markdown(markdown: str, max_chars: int = DEFAULT_MAX_CHARS) -> list[Chunk]:
     """Split markdown into heading-scoped chunks, paragraph-splitting oversized ones."""
     lines = markdown.split("\n")
-    offsets = _line_offsets(lines)
     headings = [
         (i, len(m.group(1)), m.group(2).strip())
         for i, line in enumerate(lines)
@@ -50,18 +49,25 @@ def chunk_markdown(markdown: str, max_chars: int = DEFAULT_MAX_CHARS) -> list[Ch
         sections.append(([], 0, len(lines)))
 
     chunks: list[Chunk] = []
+    search_pos = 0
     for idx, (path, sl, el) in enumerate(sections):
-        start = offsets[sl]
-        end = offsets[el]
         text = "\n".join(lines[sl:el])
-        if end - start <= max_chars:
-            chunks.append(Chunk(f"c{idx}", path, text, start, end, end - start))
+        start = markdown.find(text, search_pos)
+        if start == -1:
+            start = search_pos
+        end = start + len(text)
+        search_pos = end
+        if len(text) <= max_chars:
+            chunks.append(Chunk(f"c{idx}", path, text, start, end, len(text)))
         else:
             for j, (psl, pel) in enumerate(_paragraph_ranges(lines, sl, el, max_chars)):
-                pstart = offsets[psl]
-                pend = offsets[pel]
                 ptext = "\n".join(lines[psl:pel])
-                chunks.append(Chunk(f"c{idx}.{j}", path, ptext, pstart, pend, pend - pstart))
+                pstart = markdown.find(ptext, search_pos)
+                if pstart == -1:
+                    pstart = search_pos
+                pend = pstart + len(ptext)
+                search_pos = pend
+                chunks.append(Chunk(f"c{idx}.{j}", path, ptext, pstart, pend, len(ptext)))
     return chunks
 
 
@@ -98,15 +104,6 @@ def _paragraph_ranges(
     if cur_start is not None:
         ranges.append((cur_start, cur_end))
     return ranges
-
-
-def _line_offsets(lines: list[str]) -> list[int]:
-    offsets = [0]
-    total = 0
-    for line in lines:
-        total += len(line) + 1
-        offsets.append(total)
-    return offsets
 
 
 def chunk_manifest(doc_id: str, content_hash: str, chunks: list[Chunk]) -> list[dict]:

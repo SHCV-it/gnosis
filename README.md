@@ -43,7 +43,7 @@ current capabilities and license against its own repository.*
 The provenance claim is the product. After a fetch:
 
 ```bash
-gnosis https://docs.python.org/3/tutorial/ -o out/
+gnosis https://docs.python.org/3/tutorial/ -o out/ --warc
 
 # The frontmatter's bytes_sha256 is the SHA-256 of the raw response:
 shasum -a 256 out/.gnosis-store/<bytes_sha256>   # matches the hash in the .md
@@ -110,7 +110,7 @@ gnosis-doc report.pdf -o report.md
 
 ### Chunk manifest example
 
-`gnosis https://docs.example.com --chunk` writes `<page>.chunks.json`:
+`gnosis https://docs.example.com --chunk` writes `<page>.md.chunks.json`:
 
 ```json
 [
@@ -192,7 +192,7 @@ configuration reference.
 ```bash
 git clone https://github.com/SHCV-it/gnosis.git
 cd gnosis
-pip install -e . pytest
+pip install -e '.[test]'
 python -m pytest tests/ -q          # offline suite (localhost fixtures)
 ```
 

@@ -64,7 +64,7 @@ def test_offsets_are_document_relative():
     chunks = chunk_markdown(md)
     for c in chunks:
         assert c.char_count == c.end - c.start
-        assert c.content in md
+        assert md[c.start:c.end] == c.content
     # second chunk (first heading) must start after the intro, not at 0
     assert chunks[1].start > 0
 
