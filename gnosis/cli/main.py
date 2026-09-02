@@ -524,6 +524,16 @@ async def _maybe_render(fetch, renderer, converter, settings: Settings, quiet: b
     return rendered.html
 
 
+def _read_md_body(path: Path) -> str:
+    """Read a markdown file, stripping the YAML frontmatter block."""
+    text = path.read_text(encoding="utf-8")
+    if text.startswith("---"):
+        parts = text.split("---", 2)
+        if len(parts) >= 3:
+            return parts[2].lstrip("\n")
+    return text
+
+
 def _write_chunk_manifest(markdown: str, content_hash: str, output_path: Path, url: str) -> None:
     """Write a per-chunk citation manifest alongside a markdown file."""
     from gnosis.core.chunk import chunk_manifest, chunk_markdown
@@ -681,7 +691,6 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     skipped_count = 0
     duplicate_count = 0
     failed: list[str] = []
-    llms_pages: list[dict] = []
     seen_hashes, manifest = load_checkpoint(output_dir)
     seen_urls = {m["url"] for m in manifest}
 
@@ -725,7 +734,6 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
             if settings.output.chunk:
                 _write_chunk_manifest(markdown, compute_content_hash(markdown), output_path, page_url)
             saved_count += 1
-            llms_pages.append({"url": page_url, "title": metadata.get("title") or page_url, "markdown": markdown})
             manifest.append(
                 {
                     "url": page_url,
@@ -751,10 +759,16 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
         if not quiet:
             console.print(f"[dim]📋 Manifest: {manifest_path}[/dim]")
 
-    if llms_pages:
+    if manifest:
         site_name = urlparse(url).netloc or url
-        (output_dir / "llms.txt").write_text(render_llms_txt(site_name, llms_pages), encoding="utf-8")
-        (output_dir / "llms-full.txt").write_text(render_llms_full(llms_pages), encoding="utf-8")
+        pages = [{"url": m["url"], "title": m.get("title") or m["url"], "markdown": ""} for m in manifest]
+        (output_dir / "llms.txt").write_text(render_llms_txt(site_name, pages), encoding="utf-8")
+        full = []
+        for m in manifest:
+            md_path = output_dir / m["file"]
+            if md_path.exists():
+                full.append({"url": m["url"], "title": m.get("title") or m["url"], "markdown": _read_md_body(md_path)})
+        (output_dir / "llms-full.txt").write_text(render_llms_full(full), encoding="utf-8")
         if not quiet:
             console.print("[dim]📄 llms.txt + llms-full.txt written[/dim]")
     if not quiet:
