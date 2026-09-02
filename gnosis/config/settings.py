@@ -204,6 +204,7 @@ class OutputSettings:
     # Values support ${ENV_VAR} expansion.
     frontmatter_extra: dict[str, object] = field(default_factory=dict)
     warc: bool = False
+    chunk: bool = False
 
 
 @dataclass
@@ -335,6 +336,7 @@ def load_config(config_path: Optional[Path] = None) -> Settings:
             extension=out.get("extension", settings.output.extension),
             frontmatter=out.get("frontmatter", settings.output.frontmatter),
             warc=out.get("warc", settings.output.warc),
+            chunk=out.get("chunk", settings.output.chunk),
             frontmatter_extra=dict(
                 out.get("frontmatter_extra") or settings.output.frontmatter_extra
             ),

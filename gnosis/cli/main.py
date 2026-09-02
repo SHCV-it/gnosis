@@ -301,6 +301,11 @@ def _render_output(fetch, markdown: str, metadata: dict, settings: Settings) -> 
     is_flag=True,
     help="Render pages with the configured JS renderer (sidecar binary).",
 )
+@click.option(
+    "--chunk",
+    is_flag=True,
+    help="Also write a per-chunk citation manifest (.chunks.json) for each page.",
+)
 @click.version_option(version=__version__, prog_name="gnosis")
 def cli(
     url: str,
@@ -321,6 +326,7 @@ def cli(
     allow_private_network: bool,
     warc: bool,
     render: bool,
+    chunk: bool,
 ):
     """
     Download websites and convert them to LLM-friendly markdown.
@@ -354,6 +360,8 @@ def cli(
         settings.output.warc = True
     if render:
         settings.render.enabled = True
+    if chunk:
+        settings.output.chunk = True
     if qmd_index:
         settings.qmd.enabled = True
     if no_frontmatter:
@@ -506,6 +514,16 @@ async def _maybe_render(fetch, renderer, converter, settings: Settings, quiet: b
     return rendered.html
 
 
+def _write_chunk_manifest(markdown: str, content_hash: str, output_path: Path, url: str) -> None:
+    """Write a per-chunk citation manifest alongside a markdown file."""
+    from gnosis.core.chunk import chunk_manifest, chunk_markdown
+
+    chunks = chunk_markdown(markdown)
+    manifest = chunk_manifest(url, content_hash, chunks)
+    path = output_path.with_suffix(output_path.suffix + ".chunks.json")
+    path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
 async def download_and_convert(url: str, settings: Settings, quiet: bool, verbose: bool) -> None:
     """Download a single page and convert to markdown."""
     downloader = Downloader(settings.downloader)
@@ -554,6 +572,8 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
 
     # Save output
     output_path.write_text(document, encoding="utf-8")
+    if settings.output.chunk:
+        _write_chunk_manifest(markdown, compute_content_hash(markdown), output_path, fetch.final_url)
 
     if not quiet:
         console.print(f"[green]✓[/green] Saved: {output_path}")
@@ -682,6 +702,8 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                 continue
 
             output_path.write_text(document, encoding="utf-8")
+            if settings.output.chunk:
+                _write_chunk_manifest(markdown, compute_content_hash(markdown), output_path, page_url)
             saved_count += 1
             manifest.append(
                 {

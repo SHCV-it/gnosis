@@ -163,6 +163,7 @@ output:
   # language, author, etag/last_modified, generator version.
   frontmatter: true
   warc: false
+  chunk: false
 
   # Extra constant frontmatter fields added to every file
   # (values support ${ENV_VAR} expansion). Example:

@@ -227,6 +227,11 @@ class TestSinglePage:
         assert (tmp_path / "archive.warc.gz").exists()
         assert len(list((tmp_path / ".gnosis-store").iterdir())) == 1
 
+    def test_chunk_manifest_written(self, server, tmp_path):
+        result = run_cli([f"{server}/page", "-o", str(tmp_path), "-f", "-q", "--chunk"])
+        assert result.exit_code == 0, result.output
+        assert list(tmp_path.glob("*.chunks.json")) != []
+
 
 class TestCrawl:
     def test_crawl_writes_manifest(self, server, tmp_path):
