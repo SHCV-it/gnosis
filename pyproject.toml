@@ -51,6 +51,9 @@ docs = [
 sign = [
     "cryptography>=42",
 ]
+mcp = [
+    "mcp>=1.0",
+]
 test = [
     "pytest>=8.0.0",
     "python-frontmatter>=1.0.0",
@@ -70,6 +73,7 @@ gnosis-bench = "gnosis.bench:bench"
 gnosis-doc = "gnosis.integrations.documents:main"
 gnosis-keygen = "gnosis.cli.signing_cli:keygen"
 gnosis-verify = "gnosis.cli.signing_cli:verify"
+gnosis-mcp = "gnosis.mcp_server:main"
 
 [tool.setuptools.packages.find]
 exclude = ["tests", "tests.*"]
