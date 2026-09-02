@@ -573,7 +573,7 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
         sys.exit(1)
 
     if settings.output.warc:
-        archiver = Archiver(Path(settings.output.directory))
+        archiver = Archiver(Path(settings.output.directory), user_agent=settings.downloader.user_agent)
         try:
             archiver.archive(fetch, compute_bytes_hash(fetch.raw_bytes))
         finally:
@@ -683,7 +683,11 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     downloader = Downloader(settings.downloader)
     converter = HTMLToMarkdownConverter(settings.converter, verbose=verbose)
     crawler = Crawler(settings.crawler, downloader)
-    archiver = Archiver(Path(settings.output.directory)) if settings.output.warc else None
+    archiver = (
+        Archiver(Path(settings.output.directory), user_agent=settings.downloader.user_agent)
+        if settings.output.warc
+        else None
+    )
     renderer = _build_renderer(settings)
 
     if not quiet:

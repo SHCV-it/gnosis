@@ -21,6 +21,11 @@ def make_fetch():
     )
 
 
+def _records(path):
+    with open(path, "rb") as f:
+        return list(ArchiveIterator(f))
+
+
 def test_content_addressed_store(tmp_path):
     fetch = make_fetch()
     bs = compute_bytes_hash(fetch.raw_bytes)
@@ -34,27 +39,53 @@ def test_content_addressed_store(tmp_path):
 def test_warc_record_written(tmp_path):
     fetch = make_fetch()
     bs = compute_bytes_hash(fetch.raw_bytes)
-    archiver = Archiver(tmp_path)
+    archiver = Archiver(tmp_path, user_agent="gnosis-test/1.0")
     archiver.archive(fetch, bs)
     archiver.close()
     warc_path = tmp_path / "archive.warc.gz"
     assert warc_path.exists()
+    records = []
     with open(warc_path, "rb") as f:
-        records = []
         for r in ArchiveIterator(f):
-            records.append(
-                (r.rec_type, r.rec_headers.get_header("WARC-Target-URI"), r.http_headers, r.content_stream().read())
-            )
-    assert len(records) == 1
-    rec_type, target, http_headers, payload = records[0]
-    assert rec_type == "response"
-    assert target == "http://example.com/page"
-    assert payload == RAW
-    assert http_headers is not None
-    assert http_headers.statusline == "200 OK"
-    assert http_headers.get_header("Content-Length") == str(len(RAW))
-    assert http_headers.get_header("Content-Encoding") is None
-    assert http_headers.get_header("Transfer-Encoding") is None
+            records.append((r.rec_type, r.rec_headers, r.http_headers, r.content_stream().read()))
+    types = [x[0] for x in records]
+    assert types == ["warcinfo", "request", "response"]
+
+    # warcinfo record carries software + format metadata
+    _, info_headers, info_http, _ = records[0]
+    assert info_http is None
+    assert info_headers.get_header("WARC-Type") == "warcinfo"
+
+    # request record: method + target URI + request headers
+    _, req_headers, req_http, _ = records[1]
+    assert req_headers.get_header("WARC-Target-URI") == "http://example.com/page"
+    assert req_http.statusline == "GET /page HTTP/1.1"
+    assert req_http.get_header("User-Agent") == "gnosis-test/1.0"
+    assert req_http.get_header("Host") == "example.com"
+
+    # response record: status line + payload
+    _, resp_headers, resp_http, resp_payload = records[2]
+    assert resp_headers.get_header("WARC-Target-URI") == "http://example.com/page"
+    assert resp_http.statusline == "200 OK"
+    assert resp_http.get_header("Content-Length") == str(len(RAW))
+    assert resp_http.get_header("Content-Encoding") is None
+    assert resp_http.get_header("Transfer-Encoding") is None
+    assert resp_payload == RAW
+
+
+def test_warcinfo_written_once_per_file(tmp_path):
+    fetch = make_fetch()
+    bs = compute_bytes_hash(fetch.raw_bytes)
+    a1 = Archiver(tmp_path)
+    a1.archive(fetch, bs)
+    a1.close()
+    # reopening the same file (append) must NOT add a second warcinfo
+    a2 = Archiver(tmp_path)
+    a2.archive(fetch, bs)
+    a2.close()
+    types = [r.rec_type for r in _records(tmp_path / "archive.warc.gz")]
+    assert types == ["warcinfo", "request", "response", "request", "response"]
+
 
 def test_warc_is_valid_gzip(tmp_path):
     import gzip
@@ -65,7 +96,8 @@ def test_warc_is_valid_gzip(tmp_path):
     archiver.archive(fetch, bs)
     archiver.close()
     with gzip.open(tmp_path / "archive.warc.gz", "rb") as f:
-        assert f.read()  # BadGzipFile if trailer missing/corrupt
+        assert f.read()
+
 
 def test_dedup_same_bytes(tmp_path):
     fetch = make_fetch()
@@ -74,10 +106,11 @@ def test_dedup_same_bytes(tmp_path):
     archiver.archive(fetch, bs)
     archiver.archive(fetch, bs)
     archiver.close()
-    # one blob (dedup) but two WARC records (one per fetch)
+
     assert len(list((tmp_path / ".gnosis-store").iterdir())) == 1
-    with open(tmp_path / "archive.warc.gz", "rb") as f:
-        assert len(list(ArchiveIterator(f))) == 2
+    types = [r.rec_type for r in _records(tmp_path / "archive.warc.gz")]
+    # one warcinfo, two request/response pairs (blob deduped, WARC not)
+    assert types == ["warcinfo", "request", "response", "request", "response"]
 
 
 def test_warc_appends_across_reopen(tmp_path):
@@ -89,5 +122,5 @@ def test_warc_appends_across_reopen(tmp_path):
     a2 = Archiver(tmp_path)
     a2.archive(fetch, bs)
     a2.close()
-    with open(tmp_path / "archive.warc.gz", "rb") as f:
-        assert len(list(ArchiveIterator(f))) == 2
+    types = [r.rec_type for r in _records(tmp_path / "archive.warc.gz")]
+    assert types == ["warcinfo", "request", "response", "request", "response"]
