@@ -120,3 +120,23 @@ class TestEnvExpansion:
     def test_nested_structures(self, monkeypatch):
         monkeypatch.setenv("GNOSIS_T", "1")
         assert expand_env({"a": ["${GNOSIS_T}"]}) == {"a": ["1"]}
+
+
+def test_rate_limit_enforced_across_paths(echo_server):
+    """Regression: rate limit must fire between DIFFERENT URLs on the same host
+    (previously keyed on the full URL, so it never fired)."""
+    import time
+
+    async def _run():
+        settings = DownloaderSettings(
+            rate_limit_ms=200, retries=0, allow_private_network=True, respect_robots=False
+        )
+        t0 = time.perf_counter()
+        async with Downloader(settings) as dl:
+            await dl.fetch_result(echo_server + "/a")
+            await dl.fetch_result(echo_server + "/b")
+            await dl.fetch_result(echo_server + "/c")
+        return time.perf_counter() - t0
+
+    elapsed = asyncio.run(_run())
+    assert elapsed >= 0.4, f"rate limit not enforced across paths: {elapsed:.3f}s"

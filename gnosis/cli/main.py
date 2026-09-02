@@ -586,6 +586,8 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
     markdown = converter.convert(html, base_url=fetch.final_url)
     metadata["retention_ratio"] = converter.stats.retention_ratio
     metadata["stripped_elements"] = converter.stats.stripped_elements
+    if converter.stats.markdown_chars < 150:
+        metadata["low_content"] = True
     if converter.stats.markdown_chars < 150 and not quiet:
         console.print(
             f"[yellow]⚠[/yellow] Low content ({converter.stats.markdown_chars} chars) — "
@@ -709,6 +711,8 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                 markdown = converter.convert(html, base_url=fetch.final_url)
                 metadata["retention_ratio"] = converter.stats.retention_ratio
                 metadata["stripped_elements"] = converter.stats.stripped_elements
+                if converter.stats.markdown_chars < 150:
+                    metadata["low_content"] = True
                 if not markdown.strip():
                     raise ValueError("conversion produced empty output")
                 content_hash = compute_content_hash(markdown)

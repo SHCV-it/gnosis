@@ -86,6 +86,8 @@ def build_frontmatter(
         frontmatter["retention_ratio"] = metadata["retention_ratio"]
     if metadata.get("stripped_elements"):
         frontmatter["stripped_elements"] = metadata["stripped_elements"]
+    if metadata.get("low_content"):
+        frontmatter["low_content"] = True
 
     for key in _HEADER_PROVENANCE_KEYS:
         value = fetch.response_headers.get(key)

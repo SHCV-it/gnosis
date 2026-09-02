@@ -38,6 +38,16 @@ _HEADING_ANCHOR_CLASSES = {"headerlink", "anchor", "heading-anchor", "permalink"
 _PROTECTED_TAGS = {"html", "head", "body"}
 
 
+def _markdown_text(markdown: str) -> str:
+    """Strip markdown markup to approximate visible text (for retention ratio)."""
+    text = re.sub(r"```.*?```", " ", markdown, flags=re.DOTALL)
+    text = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", text)
+    text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"^#{1,6}\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(r"[*_`>~]", "", text)
+    return " ".join(text.replace("|", " ").split())
+
+
 class HTMLToMarkdownConverter:
     """
     Converts HTML to clean Markdown.
@@ -78,7 +88,7 @@ class HTMLToMarkdownConverter:
         for comment in soup.find_all(string=lambda s: isinstance(s, Comment)):
             comment.extract()
 
-        self.stats.source_chars = len(soup.get_text())
+        self.stats.source_chars = len(" ".join(soup.get_text().split()))
 
         # Remove excluded tags
         for tag_name in self.settings.excluded_tags:
@@ -89,6 +99,8 @@ class HTMLToMarkdownConverter:
         # Remove elements with excluded classes (exact token match)
         for class_name in self.settings.strip_classes:
             for tag in soup.find_all(class_=class_name):
+                if tag.find_parent(self.settings.content_selectors):
+                    continue
                 self.stats.stripped_elements += 1
                 tag.decompose()
 
@@ -128,7 +140,7 @@ class HTMLToMarkdownConverter:
 
         # Clean up the output
         self.stats.markdown_chars = len(markdown)
-        self.stats.retention_ratio = round(self.stats.markdown_chars / max(1, self.stats.source_chars), 4)
+        self.stats.retention_ratio = round(len(_markdown_text(markdown)) / max(1, self.stats.source_chars), 4)
         markdown = self._clean_markdown(markdown)
 
         return markdown
@@ -162,6 +174,8 @@ class HTMLToMarkdownConverter:
 
         for tag in soup.find_all(class_=has_boilerplate_word):
             if tag.name and tag.name.lower() in _PROTECTED_TAGS:
+                continue
+            if tag.find_parent(self.settings.content_selectors):
                 continue
             self.stats.stripped_elements += 1
             tag.decompose()

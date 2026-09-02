@@ -231,3 +231,33 @@ class TestContentSelectors:
         html = "<html><body><p>Just a body paragraph with text and more text here.</p></body></html>"
         md = convert(html)
         assert "Just a body paragraph" in md
+
+
+def test_content_class_words_not_stripped():
+    """Regression: boilerplate word-matching must not eat main-content elements."""
+    html = (
+        "<html><body><main><h1>API</h1>"
+        "<div class='cookie-api-docs'>Cookie API documentation text.</div>"
+        "<table class='share-data'><tr><td>share cell</td></tr></table>"
+        "<p class='badge-explainer'>Badge explainer.</p>"
+        + "Real content. " * 30
+        + "</main><aside class='sidebar'>sidebar noise</aside></body></html>"
+    )
+    converter = HTMLToMarkdownConverter()
+    md = converter.convert(html)
+    assert "Cookie API documentation" in md
+    assert "Badge explainer" in md
+    assert "sidebar noise" not in md
+
+
+def test_retention_ratio_reflects_stripped_content():
+    """Retention must be text-vs-text and reflect what was stripped (never > 1)."""
+    main_text = "Real content. " * 30
+    sidebar_text = "sidebar noise. " * 30
+    html = (
+        f"<html><body><main><h1>Doc</h1><p>{main_text}</p></main>"
+        f"<aside class='sidebar'>{sidebar_text}</aside></body></html>"
+    )
+    converter = HTMLToMarkdownConverter()
+    converter.convert(html)
+    assert 0.2 < converter.stats.retention_ratio < 0.7, converter.stats.retention_ratio

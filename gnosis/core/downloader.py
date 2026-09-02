@@ -116,7 +116,9 @@ class Downloader:
     async def _rate_limit(self, url: str | None = None) -> None:
         """Apply rate limiting between requests (safe for concurrent use)."""
         delay_ms = self.settings.rate_limit_ms
+        key: str | None = None
         if url is not None:
+            key = urlparse(url).netloc
             crawl_delay = await self._robots.crawl_delay(url)
             if crawl_delay:
                 delay_ms = max(delay_ms, int(crawl_delay * 1000))
@@ -125,13 +127,13 @@ class Downloader:
 
         async with self._rate_lock:
             now = asyncio.get_running_loop().time()
-            last = self._last_request_times.get(url, 0.0)
+            last = self._last_request_times.get(key, 0.0)
             elapsed_ms = (now - last) * 1000
 
             if elapsed_ms < delay_ms:
                 await asyncio.sleep((delay_ms - elapsed_ms) / 1000)
 
-            self._last_request_times[url] = asyncio.get_running_loop().time()
+            self._last_request_times[key] = asyncio.get_running_loop().time()
 
     async def fetch_result(self, url: str) -> FetchResult:
         """
