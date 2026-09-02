@@ -100,3 +100,12 @@ class TestFrontmatter:
         fm = build_frontmatter(fetch, "# Doc")
         assert fm["content_type"] == "text/html"
         assert fm["redirect_chain"] == ["https://example.com/a", "https://example.com/b"]
+
+
+def test_low_content_flag_recorded():
+    """Capture-quality gate: low_content must survive into frontmatter."""
+    meta = {"title": "T", "retention_ratio": 0.01, "stripped_elements": 9, "low_content": True}
+    fm = build_frontmatter(make_fetch(), "# T", metadata=meta)
+    assert fm["low_content"] is True
+    assert fm["retention_ratio"] == 0.01
+    assert fm["stripped_elements"] == 9

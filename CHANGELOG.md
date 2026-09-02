@@ -11,6 +11,22 @@
   TLS SNI/certificate verification still uses the original hostname, so pinning
   does not weaken TLS.
 
+## [1.4.2] - 2026-09-02
+
+### Fixed
+- content protection now finds content *first* and protects the actual content
+  elements (by id), so class-based selectors (`.markdown-body`, GitHub/GitLab)
+  are protected — the earlier `find_parent` matched tag names only
+- `retention_ratio` clamped to `[0, 1]` (markup overhead could still push a
+  table/block-heavy page above 1.0)
+- `low_content` flag now covered by a test
+- README relative links + demo GIF made absolute so PyPI renders them
+
+### Added
+- `BENCHMARKS.md` — reproducible `gnosis-bench` scorecard (5/5 provenance-complete)
+- `.github/ISSUE_TEMPLATE` (bug/feature) + `PULL_REQUEST_TEMPLATE`
+- docs: token-aware chunking, IP-pinned SSRF guard, capture-quality gate
+
 ## [1.4.1] - 2026-09-02
 
 ### Fixed

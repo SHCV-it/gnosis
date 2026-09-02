@@ -24,7 +24,7 @@ them. It is the *auditable* web-to-Markdown converter.
 > and WARC-grade evidence out of the box.
 
 <p align="center">
-  <img src="docs/demo.gif" alt="gnosis in action" width="720">
+  <img src="https://raw.githubusercontent.com/SHCV-it/gnosis/main/docs/demo.gif" alt="gnosis in action" width="720">
 </p>
 
 ## Why Gnosis
@@ -55,6 +55,8 @@ shasum -a 256 out/.gnosis-store/<bytes_sha256>   # matches the hash in the .md
 ```
 
 Every markdown file is re-fetchable and re-verifiable — no sidecar bookkeeping.
+
+Reproducible benchmark evidence: see [BENCHMARKS.md](https://github.com/SHCV-it/gnosis/blob/main/BENCHMARKS.md).
 
 ## Quick start
 
@@ -189,7 +191,7 @@ pip install gnosis-markdown[docs]    # optional document conversion (MarkItDown)
 ```
 
 Requires **Python 3.12+**. See
-[`gnosis/config/default.yaml`](gnosis/config/default.yaml) for the full
+[`gnosis/config/default.yaml`](https://github.com/SHCV-it/gnosis/blob/main/gnosis/config/default.yaml) for the full
 configuration reference.
 
 ## Development
@@ -204,11 +206,11 @@ python -m pytest tests/ -q          # offline suite (localhost fixtures)
 ## Contributing
 
 Contributions are welcome — open an issue first to discuss. Report security
-issues privately (see [SECURITY](SECURITY.md)). See
-[ROADMAP.md](ROADMAP.md) for the project plan.
+issues privately (see [SECURITY](https://github.com/SHCV-it/gnosis/blob/main/SECURITY.md)). See
+[ROADMAP.md](https://github.com/SHCV-it/gnosis/blob/main/ROADMAP.md) for the project plan.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](https://github.com/SHCV-it/gnosis/blob/main/LICENSE).
 
 **Authors:** Steffen Hoehne & Ali Zahid Raja, [SHCV.IT](https://shcv.it)

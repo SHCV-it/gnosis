@@ -261,3 +261,21 @@ def test_retention_ratio_reflects_stripped_content():
     converter = HTMLToMarkdownConverter()
     converter.convert(html)
     assert 0.2 < converter.stats.retention_ratio < 0.7, converter.stats.retention_ratio
+
+
+def test_content_protected_with_class_selector():
+    """Regression for the audit: class-based content selectors (`.markdown-body`)
+    must protect their descendants from boilerplate word-matching (find_parent
+    by tag name would NOT match a CSS class)."""
+    html = (
+        "<html><body>"
+        "<div class='markdown-body'><div class='cookie-api-docs'>Cookie API docs.</div>"
+        + "Real content. " * 30
+        + "</div>"
+        "<div class='sidebar'>sidebar noise</div>"
+        "</body></html>"
+    )
+    converter = HTMLToMarkdownConverter()
+    md = converter.convert(html)
+    assert "Cookie API docs" in md
+    assert "sidebar noise" not in md

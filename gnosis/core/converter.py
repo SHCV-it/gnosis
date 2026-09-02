@@ -97,16 +97,27 @@ class HTMLToMarkdownConverter:
                 tag.decompose()
 
         # Remove elements with excluded classes (exact token match)
+        # find main content FIRST so boilerplate stripping never eats it
+        content = self._find_content(soup)
+        protected: set[int] = set()
+        body = soup.find("body")
+        if content is not body and content is not soup:
+            for el in (content if isinstance(content, list) else [content]):
+                if el is not None:
+                    protected.add(id(el))
+                    for d in el.find_all(True):
+                        protected.add(id(d))
+
         for class_name in self.settings.strip_classes:
             for tag in soup.find_all(class_=class_name):
-                if tag.find_parent(self.settings.content_selectors):
+                if id(tag) in protected:
                     continue
                 self.stats.stripped_elements += 1
                 tag.decompose()
 
         # Remove elements whose class tokens contain configured boilerplate
         # words (catches namespaced classes like 'bd-sidebar-primary')
-        self._strip_by_class_words(soup)
+        self._strip_by_class_words(soup, protected)
 
         # Remove permalink anchors inside headings ('# Quickstart#' artifact)
         self._strip_heading_anchors(soup)
@@ -116,7 +127,6 @@ class HTMLToMarkdownConverter:
         self._dedupe_shadow_tables(soup)
 
         # Find main content area(s)
-        content = self._find_content(soup)
 
         # Convert to markdown
         if isinstance(content, list):
@@ -140,12 +150,12 @@ class HTMLToMarkdownConverter:
 
         # Clean up the output
         self.stats.markdown_chars = len(markdown)
-        self.stats.retention_ratio = round(len(_markdown_text(markdown)) / max(1, self.stats.source_chars), 4)
+        self.stats.retention_ratio = round(min(1.0, len(_markdown_text(markdown)) / max(1, self.stats.source_chars)), 4)
         markdown = self._clean_markdown(markdown)
 
         return markdown
 
-    def _strip_by_class_words(self, soup: BeautifulSoup) -> None:
+    def _strip_by_class_words(self, soup: BeautifulSoup, protected: set[int] | None = None) -> None:
         """
         Strip elements whose class tokens contain configured boilerplate words.
 
@@ -175,7 +185,7 @@ class HTMLToMarkdownConverter:
         for tag in soup.find_all(class_=has_boilerplate_word):
             if tag.name and tag.name.lower() in _PROTECTED_TAGS:
                 continue
-            if tag.find_parent(self.settings.content_selectors):
+            if protected and id(tag) in protected:
                 continue
             self.stats.stripped_elements += 1
             tag.decompose()

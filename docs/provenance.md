@@ -10,7 +10,10 @@ fetched_at: '2026-09-02T08:41:44Z'
 content_hash: 1549512c...16fd     # SHA-256 of the markdown body
 bytes_sha256: 85052df6...bcb31    # SHA-256 of the raw response bytes
 status_code: 200
-generator: gnosis/1.2.1
+generator: gnosis/1.4.1
+retention_ratio: 0.9137          # surviving text / source text (0..1)
+stripped_elements: 4             # boilerplate elements removed
+# low_content: true              # set when a page is likely truncated/bot-blocked
 etag: '"61e917f4..."'
 last_modified: Fri, 31 Jul 2026 16:07:37 GMT
 ---
@@ -33,5 +36,25 @@ stored once, and everything is re-fetchable and re-verifiable.
 ## Chunk citations
 
 `--chunk` writes a `<page>.md.chunks.json` manifest with stable chunk ids,
-heading paths, and document-relative char offsets — anchor a citation back to
-the exact source span.
+heading paths, **token counts**, `chunk_sha256`, and document-relative char
+offsets — anchor a citation back to the exact source span. Chunking is
+token-aware: `--chunk-size` (chars) is reconciled against `max_tokens` (default
+512) so a chunk never exceeds the token budget, with a configurable token
+overlap between adjacent chunks.
+
+## Capture quality
+
+`retention_ratio` measures the fraction of the page's visible text that
+survived conversion (0..1, computed text-vs-text, never inflated by markup).
+A low ratio or a `low_content: true` flag signals a page that may be
+truncated, paywalled, or bot-blocked — a persistent quality gate, not a
+console warning.
+
+## Network security (IP-pinned SSRF guard)
+
+Before any request is made, gnosis resolves the hostname once, validates every
+resolved address against a private/loopback/link-local allow-list, and dials
+the **already-validated IP** — closing the DNS-rebinding TOCTOU that plagues
+resolve-then-connect guards. CGNAT (`100.64.0.0/10`), 6to4, Teredo, NAT64
+(`64:ff9b::/96`), and IPv4-mapped/embedded forms are blocked. Every redirect
+hop is re-checked.
