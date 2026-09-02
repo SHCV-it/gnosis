@@ -93,7 +93,7 @@ gnosis-doc report.pdf -o report.md
 - YAML frontmatter on every file: `url`, `fetched_at` (UTC), `status_code`,
   `etag`, `last_modified`, `generator`, and `requested_url` (when redirected).
 - **`content_hash`** (SHA-256 of the markdown) *and* **`bytes_sha256`** (SHA-256
-  of the raw wire bytes) — hash the bytes, not the derived text.
+  of the raw response-body bytes) — hash the bytes, not the derived text.
 - **WARC export** (`--warc`) + a content-addressed store keyed on `bytes_sha256`.
 - `llms.txt` + `llms-full.txt` emitted on every crawl.
 

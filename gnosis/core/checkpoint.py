@@ -1,8 +1,8 @@
 """Resumable-crawl checkpoint persistence.
 
 Persists the crawl's dedup state (seen content hashes) and the running
-manifest, so an interrupted `--all` crawl can resume without refetching
-already-captured pages.
+manifest, so an interrupted `--all` crawl can resume: already-captured
+content is not re-saved, and the manifest/llms.txt accumulate across runs.
 """
 
 import json

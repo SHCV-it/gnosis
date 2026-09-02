@@ -692,10 +692,9 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     duplicate_count = 0
     failed: list[str] = []
     seen_hashes, manifest = load_checkpoint(output_dir)
-    seen_urls = {m["url"] for m in manifest}
 
     try:
-        async for page_url, fetch in crawler.crawl(url, skip_urls=seen_urls):
+        async for page_url, fetch in crawler.crawl(url):
             if not quiet:
                 console.print(f"[blue]📥[/blue] Downloaded: {page_url}")
             if archiver is not None:

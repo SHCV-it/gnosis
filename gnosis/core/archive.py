@@ -32,7 +32,7 @@ class Archiver:
             from warcio.warcwriter import WARCWriter
 
             self.store_dir.mkdir(parents=True, exist_ok=True)
-            self._warc_file = open(str(self.output_dir / WARC_FILENAME), "wb")
+            self._warc_file = open(str(self.output_dir / WARC_FILENAME), "ab")
             self._writer = WARCWriter(self._warc_file, gzip=True)
             self._StatusAndHeaders = StatusAndHeaders
         return self._writer

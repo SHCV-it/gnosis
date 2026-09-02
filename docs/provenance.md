@@ -19,7 +19,7 @@ last_modified: Fri, 31 Jul 2026 16:07:37 GMT
 Two hashes, two jobs:
 
 - **`content_hash`** — SHA-256 of the derived Markdown (dedup/change detection).
-- **`bytes_sha256`** — SHA-256 of the raw wire bytes (the *audit* hash).
+- **`bytes_sha256`** — SHA-256 of the raw response-body bytes (the *audit* hash).
 
 The frontmatter is standard YAML, parseable by `python-frontmatter`, Jekyll,
 Hugo, Obsidian, and any downstream pipeline.

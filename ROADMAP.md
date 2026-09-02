@@ -38,7 +38,7 @@ capture ─▶ extract ─▶ provenance ─▶ archive ─▶ emit
 | Capability | Source |
 |---|---|
 | YAML provenance frontmatter (`url`, `fetched_at`, `status_code`, `etag`, `last_modified`, `requested_url`, `generator`) | gnosis |
-| **Byte-level SHA-256 over raw wire bytes** + `raw_bytes` in fetch record | gap (fix) |
+| **Byte-level SHA-256 over raw response-body bytes** + `raw_bytes` in fetch record | gap (fix) |
 | WARC archival + replay; content-addressed store (sha256 = path) | warcio/pywb, Common Crawl |
 | Static async fetch + redirects + retries/backoff + rate-limit (default rung) | gnosis |
 | robots.txt + AutoThrottle **enforced** (fix the dead `respect_robots` flag) | scrapy |
