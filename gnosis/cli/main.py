@@ -7,6 +7,7 @@ Provides the command-line interface using Click.
 import asyncio
 import hashlib
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -197,7 +198,12 @@ def _render_output(fetch, markdown: str, metadata: dict, settings: Settings) -> 
     frontmatter = build_frontmatter(
         fetch, markdown, metadata, extra=settings.output.frontmatter_extra
     )
-    return render_document(frontmatter, markdown)
+    document = render_document(frontmatter, markdown)
+    signing_key = getattr(settings, "signing_key", None)
+    if signing_key:
+        from gnosis.core.signing import sign_document
+        document = sign_document(document, signing_key)
+    return document
 
 
 @click.command()
@@ -309,6 +315,18 @@ def _render_output(fetch, markdown: str, metadata: dict, settings: Settings) -> 
     is_flag=True,
     help="Treat URL as a sitemap.xml: discover and list its page URLs.",
 )
+@click.option(
+    "--sign",
+    "sign",
+    is_flag=True,
+    help="Cryptographically sign the output (Ed25519 seal of origin).",
+)
+@click.option(
+    "--sign-key",
+    "sign_key",
+    type=click.Path(exists=True, path_type=Path),
+    help="Path to an Ed25519 private key (PEM). Defaults to $GNOSIS_SIGNING_KEY.",
+)
 @click.version_option(version=__version__, prog_name="gnosis")
 def cli(
     url: str,
@@ -331,6 +349,8 @@ def cli(
     render: bool,
     chunk: bool,
     sitemap: bool,
+    sign: bool,
+    sign_key: Optional[Path],
 ):
     """
     Download websites and convert them to LLM-friendly markdown.
@@ -372,6 +392,15 @@ def cli(
         settings.output.frontmatter = False
     if frontmatter_extra:
         settings.output.frontmatter_extra.update(_parse_frontmatter_extras(frontmatter_extra))
+    if sign and no_frontmatter:
+        console.print("[red]✗[/red] --sign requires frontmatter (cannot combine with --no-frontmatter)")
+        sys.exit(1)
+    if sign:
+        key = sign_key.read_text(encoding="utf-8") if sign_key else os.environ.get("GNOSIS_SIGNING_KEY")
+        if not key:
+            console.print("[red]✗[/red] --sign requires --sign-key PATH or $GNOSIS_SIGNING_KEY")
+            sys.exit(1)
+        settings.signing_key = key
 
     # Apply auth / custom headers from CLI
     _apply_cli_auth(

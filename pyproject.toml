@@ -48,6 +48,9 @@ qmd = [
 docs = [
     "markitdown>=0.1",
 ]
+sign = [
+    "cryptography>=42",
+]
 test = [
     "pytest>=8.0.0",
     "python-frontmatter>=1.0.0",
@@ -65,6 +68,8 @@ Security = "https://github.com/SHCV-it/gnosis/blob/main/SECURITY.md"
 gnosis = "gnosis.cli.main:main"
 gnosis-bench = "gnosis.bench:bench"
 gnosis-doc = "gnosis.integrations.documents:main"
+gnosis-keygen = "gnosis.cli.signing_cli:keygen"
+gnosis-verify = "gnosis.cli.signing_cli:verify"
 
 [tool.setuptools.packages.find]
 exclude = ["tests", "tests.*"]
