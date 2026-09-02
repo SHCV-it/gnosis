@@ -232,6 +232,12 @@ class TestSinglePage:
         assert result.exit_code == 0, result.output
         assert list(tmp_path.glob("*.chunks.json")) != []
 
+    def test_llms_files_written(self, server, tmp_path):
+        result = run_cli([f"{server}/page", "--all", "-o", str(tmp_path), "-f", "-q"])
+        assert result.exit_code == 0
+        assert (tmp_path / "llms.txt").exists()
+        assert (tmp_path / "llms-full.txt").exists()
+
 
 class TestCrawl:
     def test_crawl_writes_manifest(self, server, tmp_path):

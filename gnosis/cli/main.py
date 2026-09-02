@@ -24,6 +24,7 @@ from gnosis.core.archive import Archiver
 from gnosis.core.converter import MIN_CONTENT_THRESHOLD, HTMLToMarkdownConverter
 from gnosis.core.crawler import Crawler
 from gnosis.core.downloader import Downloader, RobotsDisallowed
+from gnosis.core.llms import fetch_sitemap_urls, render_llms_full, render_llms_txt
 from gnosis.core.network import PrivateNetworkBlocked
 from gnosis.core.provenance import build_frontmatter, compute_bytes_hash, compute_content_hash, render_document
 from gnosis.core.render import ObscuraRenderer, RenderError
@@ -306,6 +307,11 @@ def _render_output(fetch, markdown: str, metadata: dict, settings: Settings) -> 
     is_flag=True,
     help="Also write a per-chunk citation manifest (.chunks.json) for each page.",
 )
+@click.option(
+    "--sitemap",
+    is_flag=True,
+    help="Treat URL as a sitemap.xml: discover and list its page URLs.",
+)
 @click.version_option(version=__version__, prog_name="gnosis")
 def cli(
     url: str,
@@ -327,6 +333,7 @@ def cli(
     warc: bool,
     render: bool,
     chunk: bool,
+    sitemap: bool,
 ):
     """
     Download websites and convert them to LLM-friendly markdown.
@@ -377,6 +384,11 @@ def cli(
         basic_user=basic_user,
         basic_token_env=basic_token_env,
     )
+
+    if sitemap:
+        for discovered in asyncio.run(_discover_sitemap(url, settings)):
+            console.print(discovered)
+        sys.exit(0)
 
     # Ensure output directory exists (unless dry-run)
     if not dry_run:
@@ -487,7 +499,7 @@ def run_qmd_integration(
 
 def _build_renderer(settings: Settings) -> Optional[ObscuraRenderer]:
     if settings.render.enabled or settings.render.auto:
-        return ObscuraRenderer(timeout=settings.render.timeout)
+        return ObscuraRenderer(binary=settings.render.engine, timeout=settings.render.timeout)
     return None
 
 
@@ -522,6 +534,15 @@ def _write_chunk_manifest(markdown: str, content_hash: str, output_path: Path, u
     manifest = chunk_manifest(url, content_hash, chunks)
     path = output_path.with_suffix(output_path.suffix + ".chunks.json")
     path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+async def _discover_sitemap(url: str, settings: Settings) -> list[str]:
+    """Fetch a sitemap.xml and return the page URLs it lists."""
+    downloader = Downloader(settings.downloader)
+    try:
+        return await fetch_sitemap_urls(url, downloader)
+    finally:
+        await downloader.close()
 
 
 async def download_and_convert(url: str, settings: Settings, quiet: bool, verbose: bool) -> None:
@@ -663,6 +684,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     duplicate_count = 0
     failed: list[str] = []
     manifest: list[dict] = []
+    llms_pages: list[dict] = []
     seen_hashes: set[str] = set()
 
     try:
@@ -705,6 +727,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
             if settings.output.chunk:
                 _write_chunk_manifest(markdown, compute_content_hash(markdown), output_path, page_url)
             saved_count += 1
+            llms_pages.append({"url": page_url, "title": metadata.get("title") or page_url, "markdown": markdown})
             manifest.append(
                 {
                     "url": page_url,
@@ -729,6 +752,12 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
         if not quiet:
             console.print(f"[dim]📋 Manifest: {manifest_path}[/dim]")
 
+    if llms_pages:
+        site_name = urlparse(url).netloc or url
+        (output_dir / "llms.txt").write_text(render_llms_txt(site_name, llms_pages), encoding="utf-8")
+        (output_dir / "llms-full.txt").write_text(render_llms_full(llms_pages), encoding="utf-8")
+        if not quiet:
+            console.print("[dim]📄 llms.txt + llms-full.txt written[/dim]")
     if not quiet:
         console.print()
         console.print("[green]✅[/green] Complete!")
