@@ -125,6 +125,22 @@ class _Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if self.path == "/ai.txt":
+            body = b"Training: Allow\nData: Allow\nDisallow: /private/\n"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path == "/llms.txt":
+            body = b"# llms.txt\n"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("ETag", '"fixture-etag"')
@@ -191,6 +207,16 @@ class TestSinglePage:
         meta = frontmatter.loads(next(tmp_path.glob("*.md")).read_text()).metadata
         assert meta["tags"] == ["docs", "test"]
         assert meta["owner"] == "kb-team"
+
+    def test_ai_txt_directives_recorded(self, server, tmp_path):
+        """ai.txt/llms.txt consent must land in the provenance frontmatter."""
+        result = run_cli([f"{server}/page", "-o", str(tmp_path), "-f", "-q"])
+        assert result.exit_code == 0
+        meta = frontmatter.loads(next(tmp_path.glob("*.md")).read_text()).metadata
+        assert meta["ai_txt"]["training"] == "Allow"
+        assert meta["ai_txt"]["data"] == "Allow"
+        assert meta["ai_txt"]["disallow"] == "/private/"
+        assert meta["llms_txt"] is True
 
     def test_empty_page_still_written(self, server, tmp_path):
         """Pages with minimal content should still be captured."""

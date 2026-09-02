@@ -88,6 +88,10 @@ def build_frontmatter(
         frontmatter["stripped_elements"] = metadata["stripped_elements"]
     if metadata.get("low_content"):
         frontmatter["low_content"] = True
+    if metadata.get("ai_txt"):
+        frontmatter["ai_txt"] = metadata["ai_txt"]
+    if metadata.get("llms_txt"):
+        frontmatter["llms_txt"] = True
 
     for key in _HEADER_PROVENANCE_KEYS:
         value = fetch.response_headers.get(key)

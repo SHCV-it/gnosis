@@ -21,6 +21,7 @@ from rich.console import Console
 from gnosis import __version__
 from gnosis.config import Settings, load_config
 from gnosis.config.settings import AuthSettings, expand_env
+from gnosis.core.aitext import fetch_host_consent
 from gnosis.core.archive import Archiver
 from gnosis.core.checkpoint import load_checkpoint, save_checkpoint
 from gnosis.core.converter import MIN_CONTENT_THRESHOLD, HTMLToMarkdownConverter
@@ -622,6 +623,9 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
             f"[yellow]⚠[/yellow] Low content ({converter.stats.markdown_chars} chars) — "
             "page may be truncated or bot-blocked"
         )
+    consent = await fetch_host_consent(fetch.final_url, downloader)
+    if consent:
+        metadata.update(consent)
     document = _render_output(fetch, markdown, metadata, settings)
 
     # Generate output filename
@@ -757,6 +761,9 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                 seen_hashes.add(content_hash)
                 if archiver is not None:
                     archiver.archive(fetch, compute_bytes_hash(fetch.raw_bytes))
+                consent = await fetch_host_consent(fetch.final_url, downloader)
+                if consent:
+                    metadata.update(consent)
                 document = _render_output(fetch, markdown, metadata, settings)
             except Exception as e:
                 if not quiet:
