@@ -221,6 +221,12 @@ class TestSinglePage:
         assert len(entries) >= 1
         assert "content_hash" in entries[0]
 
+    def test_warc_archive_written(self, server, tmp_path):
+        result = run_cli([f"{server}/page", "-o", str(tmp_path), "-f", "-q", "--warc"])
+        assert result.exit_code == 0, result.output
+        assert (tmp_path / "archive.warc.gz").exists()
+        assert len(list((tmp_path / ".gnosis-store").iterdir())) == 1
+
 
 class TestCrawl:
     def test_crawl_writes_manifest(self, server, tmp_path):

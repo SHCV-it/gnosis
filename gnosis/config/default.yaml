@@ -162,6 +162,7 @@ output:
   # title, url, fetched_at (UTC), content_hash (sha256 of body), status_code,
   # language, author, etag/last_modified, generator version.
   frontmatter: true
+  warc: false
 
   # Extra constant frontmatter fields added to every file
   # (values support ${ENV_VAR} expansion). Example:

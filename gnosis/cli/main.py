@@ -20,11 +20,12 @@ from rich.console import Console
 from gnosis import __version__
 from gnosis.config import Settings, load_config
 from gnosis.config.settings import AuthSettings, expand_env
+from gnosis.core.archive import Archiver
 from gnosis.core.converter import HTMLToMarkdownConverter
 from gnosis.core.crawler import Crawler
 from gnosis.core.downloader import Downloader, RobotsDisallowed
 from gnosis.core.network import PrivateNetworkBlocked
-from gnosis.core.provenance import build_frontmatter, compute_content_hash, render_document
+from gnosis.core.provenance import build_frontmatter, compute_bytes_hash, compute_content_hash, render_document
 
 console = Console()
 
@@ -289,6 +290,11 @@ def _render_output(fetch, markdown: str, metadata: dict, settings: Settings) -> 
     is_flag=True,
     help="Allow fetching loopback/private network addresses (bypasses the SSRF guard).",
 )
+@click.option(
+    "--warc",
+    is_flag=True,
+    help="Archive raw responses to a WARC file and content-addressed store.",
+)
 @click.version_option(version=__version__, prog_name="gnosis")
 def cli(
     url: str,
@@ -307,6 +313,7 @@ def cli(
     basic_user: Optional[str],
     basic_token_env: Optional[str],
     allow_private_network: bool,
+    warc: bool,
 ):
     """
     Download websites and convert them to LLM-friendly markdown.
@@ -336,6 +343,8 @@ def cli(
         settings.output.overwrite = True
     if allow_private_network:
         settings.downloader.allow_private_network = True
+    if warc:
+        settings.output.warc = True
     if qmd_index:
         settings.qmd.enabled = True
     if no_frontmatter:
@@ -479,6 +488,12 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
         console.print(f"[red]✗[/red] Failed to download: {e}")
         sys.exit(1)
 
+    if settings.output.warc:
+        archiver = Archiver(Path(settings.output.directory))
+        try:
+            archiver.archive(fetch, compute_bytes_hash(fetch.raw_bytes))
+        finally:
+            archiver.close()
     if not quiet:
         console.print("[blue]🔄[/blue] Converting to markdown...")
 
@@ -572,6 +587,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     downloader = Downloader(settings.downloader)
     converter = HTMLToMarkdownConverter(settings.converter, verbose=verbose)
     crawler = Crawler(settings.crawler, downloader)
+    archiver = Archiver(Path(settings.output.directory)) if settings.output.warc else None
 
     if not quiet:
         console.print(f"[blue]🕷[/blue] Crawling: {url}")
@@ -591,6 +607,8 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     async for page_url, fetch in crawler.crawl(url):
         if not quiet:
             console.print(f"[blue]📥[/blue] Downloaded: {page_url}")
+        if archiver is not None:
+            archiver.archive(fetch, compute_bytes_hash(fetch.raw_bytes))
 
         try:
             metadata = converter.extract_metadata(fetch.html)
@@ -646,6 +664,8 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
         if not quiet:
             console.print(f"[dim]📋 Manifest: {manifest_path}[/dim]")
 
+    if archiver is not None:
+        archiver.close()
     if not quiet:
         console.print()
         console.print("[green]✅[/green] Complete!")

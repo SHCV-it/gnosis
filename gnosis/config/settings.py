@@ -203,6 +203,7 @@ class OutputSettings:
     # Extra constant frontmatter fields (e.g. tags, owner, reliability).
     # Values support ${ENV_VAR} expansion.
     frontmatter_extra: dict[str, object] = field(default_factory=dict)
+    warc: bool = False
 
 
 @dataclass
@@ -322,6 +323,7 @@ def load_config(config_path: Optional[Path] = None) -> Settings:
             overwrite=out.get("overwrite", settings.output.overwrite),
             extension=out.get("extension", settings.output.extension),
             frontmatter=out.get("frontmatter", settings.output.frontmatter),
+            warc=out.get("warc", settings.output.warc),
             frontmatter_extra=dict(
                 out.get("frontmatter_extra") or settings.output.frontmatter_extra
             ),
