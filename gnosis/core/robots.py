@@ -14,6 +14,8 @@ from urllib.robotparser import RobotFileParser
 
 import httpx
 
+from gnosis.core.network import assert_public_url
+
 DEFAULT_TIMEOUT = 10.0
 
 _CRAWL_DELAY_RE = re.compile(r"(?im)^\s*crawl-delay\s*:\s*(\d+(?:\.\d+)?)")
@@ -27,22 +29,29 @@ class RobotsChecker:
         user_agent: str,
         respect: bool = True,
         timeout: float = DEFAULT_TIMEOUT,
+        allow_private_network: bool = False,
     ) -> None:
         self.user_agent = user_agent
         self.respect = respect
         self.timeout = timeout
+        self.allow_private_network = allow_private_network
         self._parsers: dict[str, RobotFileParser] = {}
         self._crawl_delays: dict[str, float | None] = {}
         self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
+            hooks = {} if self.allow_private_network else {"request": [self._guard]}
             self._client = httpx.AsyncClient(
                 timeout=httpx.Timeout(self.timeout),
                 follow_redirects=True,
                 headers={"User-Agent": self.user_agent, "Accept": "text/plain"},
+                event_hooks=hooks,
             )
         return self._client
+
+    async def _guard(self, request: httpx.Request) -> None:
+        await assert_public_url(str(request.url))
 
     @staticmethod
     def _origin(url: str) -> str:

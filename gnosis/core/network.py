@@ -49,7 +49,10 @@ async def assert_public_url(url: str) -> None:
         pass  # not an IP literal -> resolve below
 
     # Hostname: reject if ANY resolved address is private.
-    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    try:
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    except ValueError:
+        port = 80
     loop = asyncio.get_running_loop()
     try:
         infos = await loop.getaddrinfo(host, port, type=socket.SOCK_STREAM)

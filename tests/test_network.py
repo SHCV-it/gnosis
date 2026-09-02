@@ -22,6 +22,9 @@ class TestAssertPublicUrl:
             "http://[::1]/",
             "http://[::ffff:127.0.0.1]/",
             "http://224.0.0.1/",
+            "http://240.0.0.1/",
+            "http://[fc00::1]/",
+            "http://[fe80::1]/",
         ],
     )
     def test_blocks_private_addresses(self, url):
@@ -59,6 +62,19 @@ class TestDownloaderGuard:
             async with Downloader(settings) as dl:
                 return await dl.fetch_result("http://127.0.0.1:9/")
 
-        with pytest.raises(Exception) as exc:
+        try:
             asyncio.run(_run())
-        assert not isinstance(exc.value, PrivateNetworkBlocked)
+        except PrivateNetworkBlocked:
+            pytest.fail("opted-in fetch must not be blocked by the SSRF guard")
+        except Exception:
+            pass
+
+    def test_ssrf_guard_hook_blocks_private(self):
+        import httpx
+
+        async def _run():
+            async with Downloader(DownloaderSettings(rate_limit_ms=0)) as dl:
+                await dl._ssrf_guard(httpx.Request("GET", "http://169.254.169.254/"))
+
+        with pytest.raises(PrivateNetworkBlocked):
+            asyncio.run(_run())

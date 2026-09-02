@@ -82,7 +82,7 @@ def no_robots_server():
 class TestRobotsChecker:
     def test_is_allowed(self, robots_server):
         async def _run():
-            checker = RobotsChecker("Gnosis/1.1")
+            checker = RobotsChecker("Gnosis/1.1", allow_private_network=True)
             try:
                 allowed = await checker.is_allowed(f"{robots_server}/allowed")
                 blocked = await checker.is_allowed(f"{robots_server}/blocked")
@@ -96,7 +96,7 @@ class TestRobotsChecker:
 
     def test_respect_false_bypasses(self, robots_server):
         async def _run():
-            checker = RobotsChecker("Gnosis/1.1", respect=False)
+            checker = RobotsChecker("Gnosis/1.1", allow_private_network=True, respect=False)
             try:
                 return await checker.is_allowed(f"{robots_server}/blocked")
             finally:
@@ -106,7 +106,7 @@ class TestRobotsChecker:
 
     def test_crawl_delay(self, robots_server):
         async def _run():
-            checker = RobotsChecker("Gnosis/1.1")
+            checker = RobotsChecker("Gnosis/1.1", allow_private_network=True)
             try:
                 return await checker.crawl_delay(f"{robots_server}/allowed")
             finally:
@@ -116,7 +116,7 @@ class TestRobotsChecker:
 
     def test_fail_open_on_missing_robots(self, no_robots_server):
         async def _run():
-            checker = RobotsChecker("Gnosis/1.1")
+            checker = RobotsChecker("Gnosis/1.1", allow_private_network=True)
             try:
                 return await checker.is_allowed(f"{no_robots_server}/anything")
             finally:

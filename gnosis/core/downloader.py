@@ -79,7 +79,11 @@ class Downloader:
         self._last_request_time: float = 0
         self._client: Optional[httpx.AsyncClient] = None
         self._rate_lock: asyncio.Lock = asyncio.Lock()
-        self._robots = RobotsChecker(self.settings.user_agent, respect=self.settings.respect_robots)
+        self._robots = RobotsChecker(
+            self.settings.user_agent,
+            respect=self.settings.respect_robots,
+            allow_private_network=self.settings.allow_private_network,
+        )
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client."""
