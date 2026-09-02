@@ -89,6 +89,14 @@ def _split_oversized(
 
     for ptext, pstart, pend in pieces:
         ptokens = estimate_tokens(ptext)
+        if ptokens > max_tokens:
+            # a single unbreakable piece exceeds the budget -> hard split it
+            if cur:
+                windows.append(("".join(cur), cur_start, cur_end, cur_tokens))
+                cur = []
+            windows.extend(_hard_split(ptext, pstart, max_tokens))
+            cur_start = cur_end = pend
+            continue
         if cur and cur_tokens + ptokens > max_tokens:
             content = "".join(cur)
             windows.append((content, cur_start, cur_end, cur_tokens))
@@ -107,6 +115,59 @@ def _split_oversized(
     if cur:
         windows.append(("".join(cur), cur_start, cur_end, cur_tokens))
     return windows
+
+
+def _slice_run(run: str, start: int, max_tokens: int) -> list[tuple[str, int, int, int]]:
+    """Token-aware char slicing of a single unbroken run (CJK + latin safe)."""
+    out: list[tuple[str, int, int, int]] = []
+    pos = 0
+    n = len(run)
+    while pos < n:
+        end = pos + 1
+        while end <= n and estimate_tokens(run[pos:end]) <= max_tokens:
+            end += 1
+        seg = run[pos:end - 1]
+        if not seg:
+            seg = run[pos:pos + 1]
+            end = pos + 1
+        out.append((seg, start + pos, start + pos + len(seg), estimate_tokens(seg)))
+        pos += len(seg)
+    return out
+
+
+def _hard_split(text: str, base: int, max_tokens: int) -> list[tuple[str, int, int, int]]:
+    """Hard-split a single unbreakable piece into token-budgeted spans.
+
+    Packs whitespace-delimited runs greedily so every span's token estimate
+    stays <= max_tokens; a single run that alone exceeds the budget (an
+    unbroken blob, e.g. CJK text or a giant code line) is sliced token-aware.
+    """
+    out: list[tuple[str, int, int, int]] = []
+    buf: list[str] = []
+    buf_tokens = 0
+    buf_start = base
+    for m in re.finditer(r"\S+\s*", text):
+        run = m.group(0)
+        rtok = estimate_tokens(run)
+        if rtok > max_tokens:
+            if buf:
+                content = "".join(buf)
+                out.append((content, buf_start, base + m.start(), buf_tokens))
+                buf, buf_tokens = [], 0
+            out.extend(_slice_run(run, base + m.start(), max_tokens))
+            buf_start = base + m.end()
+            continue
+        if buf and buf_tokens + rtok > max_tokens:
+            content = "".join(buf)
+            out.append((content, buf_start, base + m.start(), buf_tokens))
+            buf, buf_tokens = [], 0
+            buf_start = base + m.start()
+        buf.append(run)
+        buf_tokens += rtok
+    if buf:
+        content = "".join(buf)
+        out.append((content, buf_start, base + len(text), buf_tokens))
+    return out
 
 
 def chunk_markdown(
