@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "gnosis-markdown"
 version = "1.1.2"
-description = "Website to Markdown converter with provenance frontmatter for LLM knowledge bases"
+description = "Web scraper and crawler that converts websites to clean Markdown with byte-level provenance for LLM/RAG knowledge bases"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 authors = [
     {name = "Steffen Hoehne", email = "steffen.hoehne@shcv.it"},
 ]
-keywords = ["markdown", "web-scraping", "crawler", "html-to-markdown", "knowledge-base", "llm"]
+keywords = ["markdown", "web-scraping", "crawler", "html-to-markdown", "knowledge-base", "llm", "rag", "warc", "provenance", "scraping"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
@@ -24,6 +24,8 @@ classifiers = [
     "Topic :: Text Processing :: Markup",
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Documentation",
+    "Typing :: Typed",
+    "Programming Language :: Python :: 3 :: Only",
 ]
 dependencies = [
     "click>=8.0.0",
@@ -49,6 +51,8 @@ Homepage = "https://github.com/SHCV-it/gnosis"
 Repository = "https://github.com/SHCV-it/gnosis"
 Issues = "https://github.com/SHCV-it/gnosis/issues"
 Changelog = "https://github.com/SHCV-it/gnosis/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/SHCV-it/gnosis#readme"
+Security = "https://github.com/SHCV-it/gnosis/blob/main/SECURITY.md"
 
 [project.scripts]
 gnosis = "gnosis.cli.main:main"
