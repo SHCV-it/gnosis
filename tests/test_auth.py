@@ -140,3 +140,36 @@ def test_rate_limit_enforced_across_paths(echo_server):
 
     elapsed = asyncio.run(_run())
     assert elapsed >= 0.4, f"rate limit not enforced across paths: {elapsed:.3f}s"
+
+
+def test_rate_limit_per_host_not_global():
+    """Regression: a slow host's sleep must not stall a different host
+    (previously the sleep happened while holding a single global lock)."""
+    import time
+
+    async def _run():
+        settings = DownloaderSettings(
+            rate_limit_ms=0, retries=0, allow_private_network=True, respect_robots=False
+        )
+        dl = Downloader(settings)
+        dl.settings.rate_limit_ms = 500
+        # seed the timestamp for host A so its next request must wait
+        await dl._rate_limit("http://a.example/first")
+
+        results = {}
+
+        async def timed(key, url):
+            t = time.perf_counter()
+            await dl._rate_limit(url)
+            results[key] = time.perf_counter() - t
+
+        await asyncio.gather(
+            timed("a", "http://a.example/second"),
+            timed("b", "http://b.example/second"),
+        )
+        await dl.close()
+        return results
+
+    r = asyncio.run(_run())
+    assert r["a"] >= 0.4, f"host A did not wait: {r['a']:.3f}s"
+    assert r["b"] < 0.3, f"host B was stalled by host A's sleep: {r['b']:.3f}s"
