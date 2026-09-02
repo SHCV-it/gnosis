@@ -60,6 +60,7 @@ parquet = [
 test = [
     "pytest>=8.0.0",
     "python-frontmatter>=1.0.0",
+    "pyarrow>=14",
 ]
 
 [project.urls]

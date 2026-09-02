@@ -613,10 +613,10 @@ def _page_record(fetch, markdown: str, metadata: dict) -> dict:
     return record
 
 
-def _export_record(fetch, markdown: str, metadata: dict) -> dict:
+def _export_record(fetch, markdown: str, metadata: dict, settings: Settings) -> dict:
     """Flat record for JSON/JSONL/Parquet export (nested fields stringified)."""
-    fm = build_frontmatter(fetch, markdown, metadata)
-    record = {"markdown": markdown}
+    fm = build_frontmatter(fetch, markdown, metadata, extra=settings.output.frontmatter_extra)
+    record = {"markdown": markdown, "raw_bytes": len(fetch.raw_bytes), "markdown_chars": len(markdown)}
     for key, value in fm.items():
         record[key] = json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list)) else value
     return record
@@ -723,7 +723,7 @@ async def download_and_convert(
         {"source": url, "mode": "single", "generator": f"gnosis/{__version__}"},
     )
     if fmt:
-        export_records([_export_record(fetch, markdown, metadata)], output_dir, fmt)
+        export_records([_export_record(fetch, markdown, metadata, settings)], output_dir, fmt)
 
     if not quiet:
         console.print(f"[green]✓[/green] Saved: {output_path}")
@@ -894,7 +894,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
             saved_count += 1
             page_records.append(_page_record(fetch, markdown, metadata))
             if fmt:
-                export_list.append(_export_record(fetch, markdown, metadata))
+                export_list.append(_export_record(fetch, markdown, metadata, settings))
             manifest.append(
                 {
                     "url": page_url,

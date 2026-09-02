@@ -45,3 +45,13 @@ def test_export_parquet_roundtrip(tmp_path):
 def test_unsupported_format_raises(tmp_path):
     with pytest.raises(ValueError):
         export_records(RECORDS, tmp_path, "csv")
+
+
+def test_export_module_lazy_pyarrow():
+    """Importing gnosis.core.export must NOT import pyarrow (lazy optional)."""
+    import subprocess
+    import sys
+
+    code = "import gnosis.core.export, sys; sys.exit(1 if 'pyarrow' in sys.modules else 0)"
+    result = subprocess.run([sys.executable, "-c", code])
+    assert result.returncode == 0
