@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -26,10 +27,17 @@ def keygen():
 
 @click.command("verify")
 @click.argument("path", type=click.Path(exists=True, path_type=Path))
-def verify(path: Path):
+@click.option(
+    "--public-key",
+    "public_key",
+    default=None,
+    help="Expected producer public key (base64). Defaults to $GNOSIS_PUBLIC_KEY.",
+)
+def verify(path: Path, public_key: str | None):
     """Verify the Ed25519 signature on a gnosis markdown file."""
     document = path.read_text(encoding="utf-8")
-    ok, reason = verify_document(document)
+    expected = public_key or os.environ.get("GNOSIS_PUBLIC_KEY")
+    ok, reason = verify_document(document, expected)
     if ok:
         console.print(f"[green]✓[/green] {reason}")
         sys.exit(0)

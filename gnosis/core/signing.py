@@ -1,8 +1,9 @@
 """Ed25519 cryptographic signing of gnosis output packages (seal of origin).
 
-Signs a canonical manifest of a document's provenance fields so a consumer can
+Signs a canonical manifest of a document's full provenance frontmatter (minus
+the signature block itself) plus a recomputed body hash, so a consumer can
 verify (1) the identity of the producer and (2) that neither the markdown body
-nor the provenance metadata changed after signing.
+nor ANY provenance field changed after signing.
 
 `cryptography` is imported lazily so signing stays an optional extra
 (`pip install 'gnosis-markdown[sign]'`).
@@ -17,23 +18,9 @@ from datetime import UTC, datetime
 
 import yaml
 
-_MANIFEST_FIELDS = (
-    "title",
-    "url",
-    "fetched_at",
-    "content_hash",
-    "bytes_sha256",
-    "status_code",
-    "generator",
-    "etag",
-    "last_modified",
-    "language",
-    "author",
-    "published_time",
-    "modified_time",
-    "site_name",
-    "description",
-)
+# Fields that make up the signature block itself and are therefore excluded
+# from the canonical manifest. Everything else in the frontmatter is signed.
+_SIGNATURE_FIELDS = frozenset({"signature", "public_key", "manifest_sha256"})
 
 
 def _ed25519():
@@ -52,9 +39,13 @@ def _ed25519():
 
 
 def canonical_manifest(markdown: str, metadata: dict) -> str:
-    """Canonical JSON of the provenance fields that define a document."""
-    manifest = {k: metadata[k] for k in _MANIFEST_FIELDS if k in metadata}
-    # content_hash is always recomputed from the body so body tampering is caught
+    """Canonical JSON of every provenance field, with the body hash recomputed.
+
+    Every frontmatter key is signed EXCEPT the signature block, so tampering any
+    provenance field invalidates the signature. `content_hash` is always
+    recomputed from the body so body tampering is caught too.
+    """
+    manifest = {k: v for k, v in metadata.items() if k not in _SIGNATURE_FIELDS}
     manifest["content_hash"] = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
     return json.dumps(manifest, sort_keys=True, separators=(",", ":"))
 
@@ -91,13 +82,16 @@ def sign_manifest(markdown: str, metadata: dict, private_key_pem: str) -> dict:
     """Sign a document's canonical manifest; return the signature fields."""
     serialization, _, _ = _ed25519()
     key = serialization.load_pem_private_key(private_key_pem.encode(), password=None)
-    manifest_bytes = canonical_manifest(markdown, metadata).encode("utf-8")
+    signed_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    manifest_bytes = canonical_manifest(
+        markdown, {**metadata, "signed_at": signed_at}
+    ).encode("utf-8")
     signature = key.sign(manifest_bytes)
     return {
         "signature": base64.b64encode(signature).decode(),
         "public_key": public_key_from_private(private_key_pem),
         "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
-        "signed_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "signed_at": signed_at,
     }
 
 
@@ -107,8 +101,11 @@ def verify_signature(
     """Verify a signature against a document's canonical manifest."""
     _, _, Ed25519PublicKey = _ed25519()
     try:
-        public_key = Ed25519PublicKey.from_public_bytes(base64.b64decode(public_key_b64))
         manifest_bytes = canonical_manifest(markdown, metadata).encode("utf-8")
+        stored = metadata.get("manifest_sha256")
+        if stored and hashlib.sha256(manifest_bytes).hexdigest() != stored:
+            return False
+        public_key = Ed25519PublicKey.from_public_bytes(base64.b64decode(public_key_b64))
         public_key.verify(base64.b64decode(signature), manifest_bytes)
         return True
     except Exception:
@@ -139,11 +136,9 @@ def sign_document(document: str, private_key_pem: str) -> str:
     metadata, markdown = split_frontmatter(document)
     sig = sign_manifest(markdown, metadata, private_key_pem)
     if not document.startswith("---"):
-        # no frontmatter: prefix one carrying only the signature
         front = yaml.safe_dump(sig, sort_keys=False).rstrip("\n")
         return f"---\n{front}\n---\n\n{document}"
     lines = document.split("\n")
-    # insert signature fields at the end of the existing frontmatter block
     end = next(
         (i for i in range(1, len(lines)) if lines[i].strip() == "---"), len(lines) - 1
     )
@@ -151,13 +146,25 @@ def sign_document(document: str, private_key_pem: str) -> str:
     return "\n".join(lines[:end] + sig_lines + lines[end:])
 
 
-def verify_document(document: str) -> tuple[bool, str]:
-    """Verify a signed document; return (ok, reason)."""
-    metadata, markdown = split_frontmatter(document)
+def verify_document(
+    document: str, expected_public_key: str | None = None
+) -> tuple[bool, str]:
+    """Verify a signed document; return (ok, reason).
+
+    When `expected_public_key` is provided, the embedded key must match it,
+    so producer identity is actually pinned (not just self-consistent).
+    """
+    try:
+        metadata, markdown = split_frontmatter(document)
+    except yaml.YAMLError:
+        return False, "signature INVALID — malformed frontmatter"
     signature = metadata.get("signature")
     public_key = metadata.get("public_key")
     if not signature or not public_key:
         return False, "document is not signed (missing signature/public_key)"
+    if expected_public_key and public_key != expected_public_key:
+        return False, "public key mismatch — NOT signed by the expected producer"
     if verify_signature(markdown, metadata, signature, public_key):
-        return True, f"signature valid (manifest {metadata.get('manifest_sha256', '?')})"
+        pinned = "identity pinned" if expected_public_key else "identity NOT pinned (pass --public-key)"
+        return True, f"signature valid ({pinned})"
     return False, "signature INVALID — body or provenance was modified after signing"

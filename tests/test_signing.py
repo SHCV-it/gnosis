@@ -27,6 +27,9 @@ def make_doc(body: str = BODY) -> str:
         "bytes_sha256: a9ab6cf07d6c6083d17e83cd13b9fbd1f7b499fb266ac76c099580bdb32f5c02\n"
         "status_code: 200\n"
         "generator: gnosis/1.4.3\n"
+        "retention_ratio: 0.9137\n"
+        "stripped_elements: 4\n"
+        "redirect_chain:\n- https://example.com/page\n"
         "---\n\n"
         + body
     )
@@ -110,3 +113,56 @@ def test_sign_preserves_frontmatter_body_order(keypair):
     metadata, body = split_frontmatter(signed)
     assert metadata["url"] == "https://example.com/page"
     assert body == BODY
+
+def test_retention_ratio_tamper_invalidates(keypair):
+    """Regression (reviewer P1): every provenance field must be signed, not just
+    a fixed allow-list. retention_ratio was previously NOT in the manifest."""
+    private_pem, _ = keypair
+    signed = sign_document(make_doc(), private_pem)
+    tampered = signed.replace("retention_ratio: 0.9137", "retention_ratio: 0.1")
+    ok, _ = verify_document(tampered)
+    assert not ok
+
+
+def test_stripped_elements_tamper_invalidates(keypair):
+    private_pem, _ = keypair
+    signed = sign_document(make_doc(), private_pem)
+    tampered = signed.replace("stripped_elements: 4", "stripped_elements: 99")
+    ok, _ = verify_document(tampered)
+    assert not ok
+
+
+def test_signed_at_tamper_invalidates(keypair):
+    """signed_at must be part of the signed manifest."""
+    private_pem, _ = keypair
+    signed = sign_document(make_doc(), private_pem)
+    tampered = signed.replace("signed_at: '2026-", "signed_at: '2099-")
+    ok, _ = verify_document(tampered)
+    assert not ok
+
+
+def test_expected_public_key_pinning(keypair):
+    private_pem, public_b64 = keypair
+    signed = sign_document(make_doc(), private_pem)
+    # correct pin -> valid, identity pinned
+    ok, reason = verify_document(signed, expected_public_key=public_b64)
+    assert ok and "identity pinned" in reason
+    # wrong pin -> rejected even though the signature is self-consistent
+    other_priv, other_pub = generate_keypair()
+    ok, reason = verify_document(signed, expected_public_key=other_pub)
+    assert not ok
+    assert "public key mismatch" in reason
+
+
+def test_attacker_resign_rejected_when_pinned(keypair):
+    """Reviewer P1: an attacker re-signing with their own key must fail against
+    the real producer's pinned key."""
+    _, real_public = keypair
+    attacker_priv, _ = generate_keypair()
+    forged = sign_document(make_doc(), attacker_priv)
+    # self-consistent but NOT by the real producer
+    ok, reason = verify_document(forged)
+    assert ok and "identity NOT pinned" in reason
+    ok, reason = verify_document(forged, expected_public_key=real_public)
+    assert not ok
+    assert "public key mismatch" in reason

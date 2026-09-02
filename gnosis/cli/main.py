@@ -392,6 +392,9 @@ def cli(
         settings.output.frontmatter = False
     if frontmatter_extra:
         settings.output.frontmatter_extra.update(_parse_frontmatter_extras(frontmatter_extra))
+    if sign and no_frontmatter:
+        console.print("[red]✗[/red] --sign requires frontmatter (cannot combine with --no-frontmatter)")
+        sys.exit(1)
     if sign:
         key = sign_key.read_text(encoding="utf-8") if sign_key else os.environ.get("GNOSIS_SIGNING_KEY")
         if not key:
