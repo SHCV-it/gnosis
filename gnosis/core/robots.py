@@ -14,7 +14,7 @@ from urllib.robotparser import RobotFileParser
 
 import httpx
 
-from gnosis.core.network import assert_public_url
+from gnosis.core.network import build_transport
 
 DEFAULT_TIMEOUT = 10.0
 
@@ -41,17 +41,16 @@ class RobotsChecker:
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
-            hooks = {} if self.allow_private_network else {"request": [self._guard]}
+            # SSRF guard enforced via a pinned transport (same boundary as the
+            # downloader) — robots.txt must not be an SSRF channel either.
+            transport = build_transport(self.allow_private_network)
             self._client = httpx.AsyncClient(
                 timeout=httpx.Timeout(self.timeout),
                 follow_redirects=True,
                 headers={"User-Agent": self.user_agent, "Accept": "text/plain"},
-                event_hooks=hooks,
+                transport=transport,
             )
         return self._client
-
-    async def _guard(self, request: httpx.Request) -> None:
-        await assert_public_url(str(request.url))
 
     @staticmethod
     def _origin(url: str) -> str:

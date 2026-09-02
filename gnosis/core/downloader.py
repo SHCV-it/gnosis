@@ -10,11 +10,12 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Optional
+from urllib.parse import urlparse
 
 import httpx
 
 from gnosis.config.settings import DownloaderSettings
-from gnosis.core.network import assert_public_url
+from gnosis.core.network import build_transport, check_ip_literal
 from gnosis.core.robots import RobotsChecker
 
 
@@ -99,12 +100,16 @@ class Downloader:
             }
             # Custom headers and auth override/extend the defaults
             headers.update(self.settings.request_headers())
-            event_hooks = {} if self.settings.allow_private_network else {"request": [self._ssrf_guard]}
+            # The SSRF guard is enforced at the transport/connect layer (IP
+            # pinning) so every request and every redirect hop is covered with
+            # a single resolve-then-dial step; no separate validate-then-connect
+            # hook that a rebinding resolver could race.
+            transport = build_transport(self.settings.allow_private_network)
             self._client = httpx.AsyncClient(
                 timeout=httpx.Timeout(self.settings.timeout),
                 follow_redirects=True,
                 headers=headers,
-                event_hooks=event_hooks,
+                transport=transport,
             )
         return self._client
 
@@ -127,10 +132,6 @@ class Downloader:
 
             self._last_request_time = asyncio.get_running_loop().time()
 
-    async def _ssrf_guard(self, request: httpx.Request) -> None:
-        """Block requests targeting private/reserved networks (SSRF guard)."""
-        await assert_public_url(str(request.url))
-
     async def fetch_result(self, url: str) -> FetchResult:
         """
         Fetch a URL and return the full result with provenance metadata.
@@ -145,7 +146,9 @@ class Downloader:
             DownloadError: If the download fails after all retries.
         """
         if not self.settings.allow_private_network:
-            await assert_public_url(url)
+            # DNS-free fast-fail for IP literals; hostnames are resolved and
+            # pinned exactly once at connect time (see PinnedNetworkBackend).
+            check_ip_literal(urlparse(url).hostname or "")
 
         client = await self._get_client()
         last_error: Optional[Exception] = None

@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- **SSRF DNS-rebinding TOCTOU**: the guard previously resolved and validated a
+  hostname, then let httpx resolve again independently at connect time. It now
+  resolves once, validates *every* returned address, and pins the connection to
+  a validated IP via a custom `httpcore` network backend (`PinnedNetworkBackend`)
+  wired into the downloader and robots checker through `SSRFPinnedTransport`.
+  TLS SNI/certificate verification still uses the original hostname, so pinning
+  does not weaken TLS.
+
 ## [1.3.0] - 2026-09-02
 
 ### Added
