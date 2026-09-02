@@ -49,6 +49,7 @@ Changelog = "https://github.com/SHCV-it/gnosis/blob/main/CHANGELOG.md"
 
 [project.scripts]
 gnosis = "gnosis.cli.main:main"
+gnosis-bench = "gnosis.bench:bench"
 
 [tool.setuptools.packages.find]
 exclude = ["tests", "tests.*"]
