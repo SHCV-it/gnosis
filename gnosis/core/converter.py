@@ -7,6 +7,7 @@ tag exclusions, boilerplate stripping, and content extraction.
 
 import html as html_lib
 import re
+from dataclasses import dataclass
 from typing import Optional
 from urllib.parse import urljoin
 
@@ -16,6 +17,16 @@ from gnosis.config.settings import ConverterSettings
 
 # Minimum character count for an element to be considered content
 MIN_CONTENT_THRESHOLD = 200
+
+
+@dataclass
+class ConversionStats:
+    """How the converter transformed the source HTML."""
+
+    source_chars: int = 0
+    markdown_chars: int = 0
+    stripped_elements: int = 0
+    retention_ratio: float = 1.0
 
 # Class tokens that mark permalink anchors inside headings
 # (e.g. Sphinx/ReadTheDocs 'headerlink' anchors rendered as '#').
@@ -45,6 +56,7 @@ class HTMLToMarkdownConverter:
         """
         self.settings = settings or ConverterSettings()
         self.verbose = verbose
+        self.stats = ConversionStats()
 
     def convert(self, html: str, base_url: Optional[str] = None) -> str:
         """
@@ -58,6 +70,7 @@ class HTMLToMarkdownConverter:
             Clean Markdown string.
         """
         soup = BeautifulSoup(html, "lxml")
+        self.stats = ConversionStats()
 
         # Remove HTML comments. Comment nodes subclass NavigableString, so
         # without this they leak into output as raw text (e.g. Confluence's
@@ -65,14 +78,18 @@ class HTMLToMarkdownConverter:
         for comment in soup.find_all(string=lambda s: isinstance(s, Comment)):
             comment.extract()
 
+        self.stats.source_chars = len(soup.get_text())
+
         # Remove excluded tags
         for tag_name in self.settings.excluded_tags:
             for tag in soup.find_all(tag_name):
+                self.stats.stripped_elements += 1
                 tag.decompose()
 
         # Remove elements with excluded classes (exact token match)
         for class_name in self.settings.strip_classes:
             for tag in soup.find_all(class_=class_name):
+                self.stats.stripped_elements += 1
                 tag.decompose()
 
         # Remove elements whose class tokens contain configured boilerplate
@@ -110,6 +127,8 @@ class HTMLToMarkdownConverter:
             markdown = self._convert_element(content, base_url)
 
         # Clean up the output
+        self.stats.markdown_chars = len(markdown)
+        self.stats.retention_ratio = round(self.stats.markdown_chars / max(1, self.stats.source_chars), 4)
         markdown = self._clean_markdown(markdown)
 
         return markdown
@@ -144,6 +163,7 @@ class HTMLToMarkdownConverter:
         for tag in soup.find_all(class_=has_boilerplate_word):
             if tag.name and tag.name.lower() in _PROTECTED_TAGS:
                 continue
+            self.stats.stripped_elements += 1
             tag.decompose()
 
     def _strip_heading_anchors(self, soup: BeautifulSoup) -> None:
@@ -162,6 +182,7 @@ class HTMLToMarkdownConverter:
                 classes = {str(c).lower() for c in (anchor.get("class") or [])}
                 href = str(anchor.get("href", ""))
                 if classes & _HEADING_ANCHOR_CLASSES or href.startswith("#"):
+                    self.stats.stripped_elements += 1
                     anchor.decompose()
 
     def extract_metadata(self, html: str) -> dict:

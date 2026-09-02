@@ -104,18 +104,6 @@ class _FakeDownloader:
         )
 
 
-def test_crawl_skip_start_url():
-    async def _run():
-        dl = _FakeDownloader()
-        crawler = Crawler(CrawlerSettings(max_depth=0), dl)
-        urls = [u async for u, _ in crawler.crawl("http://x.test/", skip_urls={"http://x.test/"})]
-        return urls, dl.fetched
-
-    urls, fetched = asyncio.run(_run())
-    assert fetched == []
-    assert urls == []
-
-
 def test_crawl_no_skip_fetches():
     async def _run():
         dl = _FakeDownloader()

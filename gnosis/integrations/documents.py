@@ -7,18 +7,11 @@ gnosis install never pulls it in. Install with:
 """
 
 from pathlib import Path
-from typing import Protocol
 
 import click
 from rich.console import Console
 
 console = Console()
-
-
-class DocumentConverter(Protocol):
-    def convert(self, path: str | Path) -> str:
-        """Convert a document file to Markdown."""
-        ...
 
 
 class MarkItDownDocumentConverter:

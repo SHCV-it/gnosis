@@ -33,13 +33,12 @@ from gnosis.core.render import ObscuraRenderer, RenderError
 console = Console()
 
 
-def url_to_filename(url: str, base_url: Optional[str] = None) -> str:
+def url_to_filename(url: str) -> str:
     """
     Convert a URL to a safe filename.
 
     Args:
         url: The URL to convert.
-        base_url: The base URL for relative path calculation.
 
     Returns:
         A safe filename string.
@@ -586,6 +585,13 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
     html = await _maybe_render(fetch, renderer, converter, settings, quiet)
     metadata = converter.extract_metadata(html)
     markdown = converter.convert(html, base_url=fetch.final_url)
+    metadata["retention_ratio"] = converter.stats.retention_ratio
+    metadata["stripped_elements"] = converter.stats.stripped_elements
+    if converter.stats.markdown_chars < 150 and not quiet:
+        console.print(
+            f"[yellow]⚠[/yellow] Low content ({converter.stats.markdown_chars} chars) — "
+            "page may be truncated or bot-blocked"
+        )
     document = _render_output(fetch, markdown, metadata, settings)
 
     # Generate output filename
@@ -697,13 +703,13 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
         async for page_url, fetch in crawler.crawl(url):
             if not quiet:
                 console.print(f"[blue]📥[/blue] Downloaded: {page_url}")
-            if archiver is not None:
-                archiver.archive(fetch, compute_bytes_hash(fetch.raw_bytes))
 
             try:
                 html = await _maybe_render(fetch, renderer, converter, settings, quiet)
                 metadata = converter.extract_metadata(html)
                 markdown = converter.convert(html, base_url=fetch.final_url)
+                metadata["retention_ratio"] = converter.stats.retention_ratio
+                metadata["stripped_elements"] = converter.stats.stripped_elements
                 if not markdown.strip():
                     raise ValueError("conversion produced empty output")
                 content_hash = compute_content_hash(markdown)
@@ -713,6 +719,8 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                         console.print(f"[dim]⏭  Skipped (duplicate): {page_url}[/dim]")
                     continue
                 seen_hashes.add(content_hash)
+                if archiver is not None:
+                    archiver.archive(fetch, compute_bytes_hash(fetch.raw_bytes))
                 document = _render_output(fetch, markdown, metadata, settings)
             except Exception as e:
                 if not quiet:
@@ -720,7 +728,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                 failed.append(page_url)
                 continue
 
-            filename = url_to_filename(page_url, base_url=url) + settings.output.extension
+            filename = url_to_filename(page_url) + settings.output.extension
             output_path = output_dir / filename
 
             if output_path.exists() and not settings.output.overwrite:

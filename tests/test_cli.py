@@ -313,3 +313,13 @@ class TestCrawl:
         r2 = run_cli([f"{server}/hub", "--all", "-o", str(tmp_path), "-q", "-c", str(cfg2)])
         assert r2.exit_code == 0
         assert len(list(tmp_path.glob("*.md"))) >= 3
+
+
+    def test_extraction_provenance_fields(self, server, tmp_path):
+        result = run_cli([f"{server}/page", "-o", str(tmp_path), "-f", "-q"])
+        assert result.exit_code == 0
+        meta = frontmatter.loads(next(tmp_path.glob("*.md")).read_text()).metadata
+        assert "retention_ratio" in meta
+        assert "stripped_elements" in meta
+        assert meta["stripped_elements"] >= 1
+        assert meta["retention_ratio"] > 0

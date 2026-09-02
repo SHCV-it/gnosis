@@ -119,13 +119,13 @@ class Downloader:
             return
 
         async with self._rate_lock:
-            now = asyncio.get_event_loop().time()
+            now = asyncio.get_running_loop().time()
             elapsed_ms = (now - self._last_request_time) * 1000
 
             if elapsed_ms < delay_ms:
                 await asyncio.sleep((delay_ms - elapsed_ms) / 1000)
 
-            self._last_request_time = asyncio.get_event_loop().time()
+            self._last_request_time = asyncio.get_running_loop().time()
 
     async def _ssrf_guard(self, request: httpx.Request) -> None:
         """Block requests targeting private/reserved networks (SSRF guard)."""

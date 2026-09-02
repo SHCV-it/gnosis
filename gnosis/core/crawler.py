@@ -43,9 +43,7 @@ class Crawler:
         self.settings = settings or CrawlerSettings()
         self.downloader = downloader or Downloader()
 
-    async def discover_pages(
-        self, start_url: str, skip_urls: Optional[Set[str]] = None
-    ) -> Tuple[int, list[str], bool]:
+    async def discover_pages(self, start_url: str) -> Tuple[int, list[str], bool]:
         """
         Discover all pages under a URL without processing them.
 
@@ -76,8 +74,6 @@ class Crawler:
             if url in visited:
                 continue
             visited.add(url)
-            if skip_urls and url in skip_urls:
-                continue
 
             try:
                 html = await self.downloader.fetch(url)
@@ -99,9 +95,7 @@ class Crawler:
 
         return len(discovered_urls), discovered_urls, hit_max_limit
 
-    async def crawl(
-        self, start_url: str, skip_urls: Optional[Set[str]] = None
-    ) -> AsyncIterator[Tuple[str, FetchResult]]:
+    async def crawl(self, start_url: str) -> AsyncIterator[Tuple[str, FetchResult]]:
         """
         Crawl a website starting from the given URL.
 
@@ -143,8 +137,6 @@ class Crawler:
                 if url in visited:
                     continue
                 visited.add(url)
-                if skip_urls and url in skip_urls:
-                    continue
                 batch.append((url, depth))
 
             if not batch:

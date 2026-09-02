@@ -13,7 +13,6 @@ import asyncio
 import subprocess
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Protocol
 
 
 class RenderError(Exception):
@@ -29,12 +28,6 @@ class RenderResult:
     version: str = ""
     render_timestamp: str = ""
     js_executed: bool = True
-
-
-class Renderer(Protocol):
-    async def render(self, url: str) -> RenderResult:
-        """Render a URL and return the post-JS HTML."""
-        ...
 
 
 class ObscuraRenderer:
