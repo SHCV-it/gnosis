@@ -99,3 +99,26 @@ def test_cjk_splits_under_token_budget():
     cjk = "# 中文\n\n" + "你好世界。" * 300
     chunks = chunk_markdown(cjk, max_tokens=512)
     assert any("." in c.chunk_id for c in chunks)
+
+
+def test_hard_token_budget_enforced_latin():
+    """A single unbroken block larger than max_tokens must be hard-split so
+    every chunk stays within budget (was: soft, could blow the budget)."""
+    block = " ".join(["alpha"] * 400)  # 400 latin tokens, no sentence breaks
+    md = "# H\n\n" + block
+    chunks = chunk_markdown(md, max_tokens=128, overlap_tokens=0)
+    assert chunks
+    for c in chunks:
+        assert c.token_count <= 128, c.token_count
+        assert md[c.start:c.end] == c.content  # offsets stay exact
+
+
+def test_hard_token_budget_enforced_cjk():
+    """CJK text has no spaces: a single run must still be sliced token-aware."""
+    block = "\u6c49" * 400  # 400 CJK chars = 400 tokens, unbroken
+    md = "# H\n\n" + block
+    chunks = chunk_markdown(md, max_tokens=100, overlap_tokens=0)
+    assert chunks
+    for c in chunks:
+        assert c.token_count <= 100, c.token_count
+        assert md[c.start:c.end] == c.content
