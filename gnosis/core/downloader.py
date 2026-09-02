@@ -58,6 +58,10 @@ class FetchResult:
     raw_bytes: bytes = b""
     content_type: str = ""
     redirect_chain: list[str] = field(default_factory=list)
+    render_engine: str = ""
+    render_version: str = ""
+    render_timestamp: str = ""
+    js_executed: bool = False
 
 
 class Downloader:

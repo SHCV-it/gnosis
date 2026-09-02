@@ -93,6 +93,11 @@ def build_frontmatter(
         frontmatter["content_type"] = fetch.content_type
     if fetch.redirect_chain:
         frontmatter["redirect_chain"] = fetch.redirect_chain
+    if fetch.render_engine:
+        frontmatter["render_engine"] = fetch.render_engine
+        frontmatter["render_version"] = fetch.render_version
+        frontmatter["render_timestamp"] = fetch.render_timestamp
+        frontmatter["js_executed"] = fetch.js_executed
 
     # User extras: merged first-class but never clobber core provenance
     for key, value in (extra or {}).items():

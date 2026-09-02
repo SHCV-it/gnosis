@@ -211,3 +211,19 @@ qmd:
   
   # Maximum characters to use from sampled files
   sample_content_max_chars: 10000
+
+# ============================================================================
+# Render Settings (optional JS rendering via a sidecar binary)
+# ============================================================================
+render:
+  # Render every page (also enabled via the --render flag)
+  enabled: false
+
+  # Auto-render when static extraction yields no substantial content
+  auto: false
+
+  # Renderer binary to invoke
+  engine: "obscura"
+
+  # Render timeout in seconds
+  timeout: 30

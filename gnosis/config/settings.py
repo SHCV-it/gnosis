@@ -228,6 +228,16 @@ class QMDSettings:
 
 
 @dataclass
+class RenderSettings:
+    """Settings for the optional JS renderer."""
+
+    enabled: bool = False
+    auto: bool = False
+    engine: str = "obscura"
+    timeout: float = 30.0
+
+
+@dataclass
 class Settings:
     """Main settings container for Gnosis."""
 
@@ -236,6 +246,7 @@ class Settings:
     converter: ConverterSettings = field(default_factory=ConverterSettings)
     output: OutputSettings = field(default_factory=OutputSettings)
     qmd: QMDSettings = field(default_factory=QMDSettings)
+    render: RenderSettings = field(default_factory=RenderSettings)
 
 
 def load_config(config_path: Optional[Path] = None) -> Settings:
@@ -348,6 +359,15 @@ def load_config(config_path: Optional[Path] = None) -> Settings:
             sample_content_max_chars=qmd.get(
                 "sample_content_max_chars", settings.qmd.sample_content_max_chars
             ),
+        )
+
+    if "render" in data:
+        rd = data["render"]
+        settings.render = RenderSettings(
+            enabled=rd.get("enabled", settings.render.enabled),
+            auto=rd.get("auto", settings.render.auto),
+            engine=rd.get("engine", settings.render.engine),
+            timeout=rd.get("timeout", settings.render.timeout),
         )
 
     return settings

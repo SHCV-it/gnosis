@@ -21,11 +21,12 @@ from gnosis import __version__
 from gnosis.config import Settings, load_config
 from gnosis.config.settings import AuthSettings, expand_env
 from gnosis.core.archive import Archiver
-from gnosis.core.converter import HTMLToMarkdownConverter
+from gnosis.core.converter import MIN_CONTENT_THRESHOLD, HTMLToMarkdownConverter
 from gnosis.core.crawler import Crawler
 from gnosis.core.downloader import Downloader, RobotsDisallowed
 from gnosis.core.network import PrivateNetworkBlocked
 from gnosis.core.provenance import build_frontmatter, compute_bytes_hash, compute_content_hash, render_document
+from gnosis.core.render import ObscuraRenderer, RenderError
 
 console = Console()
 
@@ -295,6 +296,11 @@ def _render_output(fetch, markdown: str, metadata: dict, settings: Settings) -> 
     is_flag=True,
     help="Archive raw responses to a WARC file and content-addressed store.",
 )
+@click.option(
+    "--render",
+    is_flag=True,
+    help="Render pages with the configured JS renderer (sidecar binary).",
+)
 @click.version_option(version=__version__, prog_name="gnosis")
 def cli(
     url: str,
@@ -314,6 +320,7 @@ def cli(
     basic_token_env: Optional[str],
     allow_private_network: bool,
     warc: bool,
+    render: bool,
 ):
     """
     Download websites and convert them to LLM-friendly markdown.
@@ -345,6 +352,8 @@ def cli(
         settings.downloader.allow_private_network = True
     if warc:
         settings.output.warc = True
+    if render:
+        settings.render.enabled = True
     if qmd_index:
         settings.qmd.enabled = True
     if no_frontmatter:
@@ -468,10 +477,40 @@ def run_qmd_integration(
         console.print(f"[red]✗[/red] QMD integration error: {e}")
 
 
+def _build_renderer(settings: Settings) -> Optional[ObscuraRenderer]:
+    if settings.render.enabled or settings.render.auto:
+        return ObscuraRenderer(timeout=settings.render.timeout)
+    return None
+
+
+async def _maybe_render(fetch, renderer, converter, settings: Settings, quiet: bool) -> str:
+    """Return HTML to convert (rendered if enabled/needed); stamp fetch provenance."""
+    if renderer is None:
+        return fetch.html
+    should_render = settings.render.enabled
+    if not should_render:
+        static_md = converter.convert(fetch.html, base_url=fetch.final_url)
+        should_render = len(static_md.strip()) < MIN_CONTENT_THRESHOLD
+    if not should_render:
+        return fetch.html
+    try:
+        rendered = await renderer.render(fetch.final_url)
+    except RenderError as exc:
+        if not quiet:
+            console.print(f"[yellow]⚠[/yellow] Render failed ({exc}); using static HTML")
+        return fetch.html
+    fetch.render_engine = rendered.engine
+    fetch.render_version = rendered.version
+    fetch.render_timestamp = rendered.render_timestamp
+    fetch.js_executed = rendered.js_executed
+    return rendered.html
+
+
 async def download_and_convert(url: str, settings: Settings, quiet: bool, verbose: bool) -> None:
     """Download a single page and convert to markdown."""
     downloader = Downloader(settings.downloader)
     converter = HTMLToMarkdownConverter(settings.converter, verbose=verbose)
+    renderer = _build_renderer(settings)
 
     if not quiet:
         console.print(f"[blue]📥[/blue] Downloading: {url}")
@@ -497,8 +536,9 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
     if not quiet:
         console.print("[blue]🔄[/blue] Converting to markdown...")
 
-    metadata = converter.extract_metadata(fetch.html)
-    markdown = converter.convert(fetch.html, base_url=fetch.final_url)
+    html = await _maybe_render(fetch, renderer, converter, settings, quiet)
+    metadata = converter.extract_metadata(html)
+    markdown = converter.convert(html, base_url=fetch.final_url)
     document = _render_output(fetch, markdown, metadata, settings)
 
     # Generate output filename
@@ -588,6 +628,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     converter = HTMLToMarkdownConverter(settings.converter, verbose=verbose)
     crawler = Crawler(settings.crawler, downloader)
     archiver = Archiver(Path(settings.output.directory)) if settings.output.warc else None
+    renderer = _build_renderer(settings)
 
     if not quiet:
         console.print(f"[blue]🕷[/blue] Crawling: {url}")
@@ -612,8 +653,9 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                 archiver.archive(fetch, compute_bytes_hash(fetch.raw_bytes))
 
             try:
-                metadata = converter.extract_metadata(fetch.html)
-                markdown = converter.convert(fetch.html, base_url=fetch.final_url)
+                html = await _maybe_render(fetch, renderer, converter, settings, quiet)
+                metadata = converter.extract_metadata(html)
+                markdown = converter.convert(html, base_url=fetch.final_url)
                 if not markdown.strip():
                     raise ValueError("conversion produced empty output")
                 content_hash = compute_content_hash(markdown)
