@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.2.0] - 2026-09-02
 
 ### Added
 - **Byte-level provenance**: `bytes_sha256` (SHA-256 of the raw response bytes) recorded alongside `content_hash` (SHA-256 of the derived markdown); frontmatter also records `content_type` and `redirect_chain` when present.

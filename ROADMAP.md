@@ -60,23 +60,23 @@ capture ─▶ extract ─▶ provenance ─▶ archive ─▶ emit
 
 ## Issue checklist
 
-| # | Issue | Phase |
-|---|---|---|
-| 1 | CI pipeline: test + lint + build | Foundation |
-| 2 | Modernize packaging (single-source pyproject, fix `name` mismatch, ruff) | Foundation |
-| 3 | Provenance fix: byte-level hash + `raw_bytes`/`redirect_chain` capture | v1 moat |
-| 4 | Enforce robots.txt + politeness (wire up `respect_robots`) | v1 moat |
-| 5 | SSRF/private-network guard on fetch + redirects | v1 security |
-| 6 | WARC export + content-addressed store | v1 moat |
-| 7 | Optional render backend (`Renderer` protocol + adapter), static-first | v1 |
-| 8 | `gnosis bench` reproducible benchmark + scorecard | v1 proof |
-| 9 | Chunking + numbered citations output mode | v2 |
-| 10 | `llms.txt`/`llms-full.txt` emission + sitemap ingestion | v2 |
-| 11 | Checkpoint/resume crawl keyed on `content_hash` | v2 |
-| 12 | Document converters as optional plugins (MarkItDown/Docling) | v2 |
-| 13 | README overhaul: SEO-optimized, attractive, positioning + comparison | polish |
-| 14 | PyPI polish: metadata, keywords, classifiers, URLs, license/NOTICE | polish |
-| 15 | Full-sweep deep test + security + performance audit | final gate |
+| # | Issue | Phase | Status |
+|---|---|---|---|
+| 1 | CI pipeline: test + lint + build | Foundation | ✅ |
+| 2 | Modernize packaging | Foundation | ✅ |
+| 3 | Provenance fix: byte-level hash + `raw_bytes`/`redirect_chain` | v1 moat | ✅ |
+| 4 | Enforce robots.txt + politeness | v1 moat | ✅ |
+| 5 | SSRF/private-network guard | v1 security | ✅ |
+| 6 | WARC export + content-addressed store | v1 moat | ✅ |
+| 7 | Optional render backend | v1 | ✅ |
+| 8 | `gnosis bench` scorecard | v1 proof | ✅ |
+| 9 | Chunking + citations | v2 | ✅ |
+| 10 | `llms.txt` + sitemap | v2 | ✅ |
+| 11 | Checkpoint/resume crawl | v2 | ✅ |
+| 12 | Document converter plugins | v2 | ✅ |
+| 13 | README overhaul + SEO | polish | ✅ |
+| 14 | PyPI polish | polish | ✅ |
+| 15 | Full-sweep audit | final gate | ✅ |
 
 ## Execution protocol (per issue)
 
