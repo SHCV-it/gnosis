@@ -54,9 +54,13 @@ sign = [
 mcp = [
     "mcp>=1.0",
 ]
+parquet = [
+    "pyarrow>=14",
+]
 test = [
     "pytest>=8.0.0",
     "python-frontmatter>=1.0.0",
+    "pyarrow>=14",
 ]
 
 [project.urls]

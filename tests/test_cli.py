@@ -261,6 +261,27 @@ class TestSinglePage:
         assert card["pages"][0]["policy_decision"]["allowed"] is False
         assert card["pages"][0]["policy_decision"]["rule"] == "no-proprietary"
 
+    def test_format_json_export(self, server, tmp_path):
+        result = run_cli([f"{server}/page", "-o", str(tmp_path), "-f", "-q", "--format", "json"])
+        assert result.exit_code == 0
+        data = json.loads((tmp_path / "documents.json").read_text())
+        assert len(data) == 1
+        assert data[0]["url"] == f"{server}/page"
+        assert len(data[0]["content_hash"]) == 64
+        assert "Fixture" in data[0]["markdown"]
+        # nested frontmatter fields are preserved as JSON-encoded strings
+        assert json.loads(data[0]["ai_txt"])["training"] == "Allow"
+
+    def test_crawl_format_json_export(self, server, tmp_path):
+        result = run_cli(
+            [f"{server}/hub", "-o", str(tmp_path), "-f", "-q", "--all", "--format", "json"]
+        )
+        assert result.exit_code == 0
+        md_files = list(tmp_path.glob("*.md"))
+        data = json.loads((tmp_path / "documents.json").read_text())
+        assert len(data) == len(md_files) >= 1
+        assert all(len(r["content_hash"]) == 64 for r in data)
+
     def test_empty_page_still_written(self, server, tmp_path):
         """Pages with minimal content should still be captured."""
         result = run_cli([f"{server}/empty", "-o", str(tmp_path), "-f", "-q"])
