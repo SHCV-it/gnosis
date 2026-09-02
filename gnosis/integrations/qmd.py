@@ -30,8 +30,9 @@ class QMDIntegrator:
     and generate vector embeddings for semantic search.
     """
     
-    def __init__(self):
+    def __init__(self, qmd_binary: Optional[str] = None):
         """Initialize the QMD integrator and verify QMD is available."""
+        self.qmd_binary = qmd_binary or shutil.which("qmd")
         self._verify_qmd_installed()
     
     def _verify_qmd_installed(self) -> None:
@@ -41,7 +42,7 @@ class QMDIntegrator:
         Raises:
             QMDNotFoundError: If QMD is not found in PATH.
         """
-        if shutil.which("qmd") is None:
+        if self.qmd_binary is None:
             raise QMDNotFoundError(
                 "QMD is not installed or not in PATH. "
                 "Install it with: bun install -g https://github.com/tobi/qmd"
@@ -66,7 +67,8 @@ class QMDIntegrator:
                 cmd,
                 capture_output=True,
                 text=True,
-                check=check
+                check=check,
+                timeout=120,
             )
             return result
         except subprocess.CalledProcessError as e:
@@ -97,7 +99,7 @@ class QMDIntegrator:
             QMDCommandError: If the command fails.
         """
         cmd = [
-            "qmd",
+            self.qmd_binary,
             "collection",
             "add",
             str(output_dir.resolve()),
@@ -148,7 +150,7 @@ class QMDIntegrator:
         Raises:
             QMDCommandError: If the command fails.
         """
-        self._run_command(["qmd", "collection", "remove", collection_name])
+        self._run_command([self.qmd_binary, "collection", "remove", collection_name])
         return True
     
     @staticmethod
@@ -184,7 +186,7 @@ class QMDIntegrator:
             QMDCommandError: If the command fails.
         """
         cmd = [
-            "qmd",
+            self.qmd_binary,
             "context",
             "add",
             f"qmd://{collection_name}",
@@ -207,7 +209,7 @@ class QMDIntegrator:
         Raises:
             QMDCommandError: If the command fails.
         """
-        cmd = ["qmd", "embed"]
+        cmd = [self.qmd_binary, "embed"]
         if force:
             cmd.append("-f")
         
@@ -258,7 +260,7 @@ class QMDIntegrator:
             True if the collection exists, False otherwise.
         """
         try:
-            result = self._run_command(["qmd", "collection", "list"], check=True)
+            result = self._run_command([self.qmd_binary, "collection", "list"], check=True)
             return collection_name in result.stdout
         except QMDCommandError:
             return False

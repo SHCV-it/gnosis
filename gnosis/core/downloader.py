@@ -81,7 +81,7 @@ class Downloader:
             settings: Downloader settings. Uses defaults if None.
         """
         self.settings = settings or DownloaderSettings()
-        self._last_request_time: float = 0
+        self._last_request_times: dict[str, float] = {}
         self._client: Optional[httpx.AsyncClient] = None
         self._rate_lock: asyncio.Lock = asyncio.Lock()
         self._robots = RobotsChecker(
@@ -125,12 +125,13 @@ class Downloader:
 
         async with self._rate_lock:
             now = asyncio.get_running_loop().time()
-            elapsed_ms = (now - self._last_request_time) * 1000
+            last = self._last_request_times.get(url, 0.0)
+            elapsed_ms = (now - last) * 1000
 
             if elapsed_ms < delay_ms:
                 await asyncio.sleep((delay_ms - elapsed_ms) / 1000)
 
-            self._last_request_time = asyncio.get_running_loop().time()
+            self._last_request_times[url] = asyncio.get_running_loop().time()
 
     async def fetch_result(self, url: str) -> FetchResult:
         """

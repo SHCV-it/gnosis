@@ -6,10 +6,7 @@ documentation collections for QMD knowledge base indexing.
 """
 
 from pathlib import Path
-from typing import Optional
-
-import torch
-from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+from typing import Any, Optional
 
 from gnosis.config.settings import QMDSettings
 
@@ -30,14 +27,17 @@ class LLMContextGenerator:
             settings: QMD configuration settings including model name and parameters.
         """
         self.settings = settings
-        self.model: Optional[AutoModelForCausalLM] = None
-        self.tokenizer: Optional[AutoTokenizer] = None
+        self.model: Optional[Any] = None
+        self.tokenizer: Optional[Any] = None
         self._model_loaded = False
     
     def _load_model(self) -> None:
         """Load the model and tokenizer if not already loaded."""
         if self._model_loaded:
             return
+
+        import torch
+        from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
         
         # Map dtype string to torch dtype
         dtype_map = {
@@ -197,6 +197,7 @@ class LLMContextGenerator:
         ).to(self.model.device)
         
         # Generate
+        import torch
         with torch.inference_mode():
             outputs = self.model.generate(
                 **inputs,
@@ -251,5 +252,6 @@ class LLMContextGenerator:
         self._model_loaded = False
         
         # Clear CUDA cache if available
+        import torch
         if torch.cuda.is_available():
             torch.cuda.empty_cache()

@@ -420,10 +420,9 @@ def run_qmd_integration(
         return
 
     # Lazy imports — torch/transformers are heavy and optional
-    from gnosis.integrations.llm import LLMContextGenerator
-    from gnosis.integrations.qmd import QMDCommandError, QMDIntegrator, QMDNotFoundError
-    
     try:
+        from gnosis.integrations.llm import LLMContextGenerator
+        from gnosis.integrations.qmd import QMDCommandError, QMDIntegrator, QMDNotFoundError
         if not quiet:
             console.print("\n[blue]🔗[/blue] QMD Integration")
             console.print("[dim]─────────────────────[/dim]")
