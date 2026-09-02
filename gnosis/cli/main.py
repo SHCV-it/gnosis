@@ -20,6 +20,7 @@ from rich.console import Console
 
 from gnosis import __version__
 from gnosis.config import Settings, load_config
+from gnosis.config.profiles import PROFILES
 from gnosis.config.settings import AuthSettings, expand_env
 from gnosis.core.aitext import fetch_host_consent
 from gnosis.core.archive import Archiver
@@ -320,6 +321,12 @@ def _render_output(fetch, markdown: str, metadata: dict, settings: Settings) -> 
     help="Treat URL as a sitemap.xml: discover and list its page URLs.",
 )
 @click.option(
+    "--profile",
+    "profile",
+    type=click.Choice(list(PROFILES)),
+    help="Named compliance policy preset (overrides config policies).",
+)
+@click.option(
     "--format",
     "fmt",
     type=click.Choice(["json", "jsonl", "parquet"]),
@@ -362,6 +369,7 @@ def cli(
     sign: bool,
     sign_key: Optional[Path],
     fmt: Optional[str],
+    profile: Optional[str],
 ):
     """
     Download websites and convert them to LLM-friendly markdown.
@@ -403,6 +411,8 @@ def cli(
         settings.output.frontmatter = False
     if frontmatter_extra:
         settings.output.frontmatter_extra.update(_parse_frontmatter_extras(frontmatter_extra))
+    if profile:
+        settings.policies = PROFILES[profile]
     if sign and no_frontmatter:
         console.print("[red]✗[/red] --sign requires frontmatter (cannot combine with --no-frontmatter)")
         sys.exit(1)

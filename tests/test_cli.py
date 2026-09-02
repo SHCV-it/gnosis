@@ -282,6 +282,16 @@ class TestSinglePage:
         assert len(data) == len(md_files) >= 1
         assert all(len(r["content_hash"]) == 64 for r in data)
 
+    def test_profile_compliance_blocks_proprietary(self, server, tmp_path):
+        result = run_cli(
+            [f"{server}/proprietary", "-o", str(tmp_path), "-f", "-q", "--profile", "compliance"]
+        )
+        assert result.exit_code != 0
+        assert list(tmp_path.glob("*.md")) == []
+        card = json.loads((tmp_path / "data-card.json").read_text())
+        assert card["pages"][0]["error"].startswith("policy:")
+        assert card["pages"][0]["policy_decision"]["allowed"] is False
+
     def test_empty_page_still_written(self, server, tmp_path):
         """Pages with minimal content should still be captured."""
         result = run_cli([f"{server}/empty", "-o", str(tmp_path), "-f", "-q"])
