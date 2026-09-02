@@ -42,6 +42,7 @@ class Crawler:
         """
         self.settings = settings or CrawlerSettings()
         self.downloader = downloader or Downloader()
+        self.failed: list[tuple[str, str]] = []
 
     async def discover_pages(self, start_url: str) -> Tuple[int, list[str], bool]:
         """
@@ -148,6 +149,7 @@ class Crawler:
 
             for (url, depth), result in zip(batch, results):
                 if isinstance(result, Exception):
+                    self.failed.append((url, str(result)))
                     continue
 
                 pages_yielded += 1

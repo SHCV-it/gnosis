@@ -584,7 +584,7 @@ async def _discover_sitemap(url: str, settings: Settings) -> list[str]:
 
 def _page_record(fetch, markdown: str, metadata: dict) -> dict:
     """Assemble the per-page record for a data card."""
-    return {
+    record = {
         "url": fetch.final_url,
         "status_code": fetch.status_code,
         "raw_bytes": len(fetch.raw_bytes),
@@ -598,6 +598,17 @@ def _page_record(fetch, markdown: str, metadata: dict) -> dict:
         "ai_txt": metadata.get("ai_txt"),
         "llms_txt": bool(metadata.get("llms_txt")),
     }
+    if fetch.url != fetch.final_url:
+        record["requested_url"] = fetch.url
+    return record
+
+
+def _write_failed_data_card(settings: Settings, url: str, error: str) -> None:
+    write_data_card(
+        Path(settings.output.directory),
+        [{"url": url, "status_code": None, "error": error, "raw_bytes": 0, "markdown_chars": 0}],
+        {"source": url, "mode": "single", "generator": f"gnosis/{__version__}"},
+    )
 
 
 async def download_and_convert(url: str, settings: Settings, quiet: bool, verbose: bool) -> None:
@@ -613,12 +624,15 @@ async def download_and_convert(url: str, settings: Settings, quiet: bool, verbos
         fetch = await downloader.fetch_result(url)
     except RobotsDisallowed as e:
         console.print(f"[yellow]⚠[/yellow] {e}")
+        _write_failed_data_card(settings, url, str(e))
         sys.exit(1)
     except PrivateNetworkBlocked as e:
         console.print(f"[red]✗[/red] {e}")
+        _write_failed_data_card(settings, url, str(e))
         sys.exit(1)
     except Exception as e:
         console.print(f"[red]✗[/red] Failed to download: {e}")
+        _write_failed_data_card(settings, url, str(e))
         sys.exit(1)
 
     if settings.output.warc:
@@ -794,6 +808,9 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                 if not quiet:
                     console.print(f"[red]✗[/red] Failed to convert {page_url}: {e}")
                 failed.append(page_url)
+                page_records.append(
+                    {"url": page_url, "status_code": None, "error": str(e), "raw_bytes": 0, "markdown_chars": 0}
+                )
                 continue
 
             filename = url_to_filename(page_url) + settings.output.extension
@@ -828,14 +845,17 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
         if archiver is not None:
             archiver.close()
 
-    if page_records:
-        write_data_card(
-            output_dir,
-            page_records,
-            {"source": url, "mode": "crawl", "generator": f"gnosis/{__version__}"},
+    for fail_url, err in crawler.failed:
+        page_records.append(
+            {"url": fail_url, "status_code": None, "error": err, "raw_bytes": 0, "markdown_chars": 0}
         )
-        if not quiet:
-            console.print(f"[dim]🃏 Data card: {output_dir / 'data-card.json'}[/dim]")
+    write_data_card(
+        output_dir,
+        page_records,
+        {"source": url, "mode": "crawl", "generator": f"gnosis/{__version__}"},
+    )
+    if not quiet:
+        console.print(f"[dim]🃏 Data card: {output_dir / 'data-card.json'}[/dim]")
     # Write crawl manifest for auditing / downstream bookkeeping
     if manifest:
         manifest_path = output_dir / "_manifest.json"

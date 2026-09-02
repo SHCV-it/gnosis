@@ -243,7 +243,7 @@ class HTMLToMarkdownConverter:
 
         license_val = meta(name="license") or meta(property="og:license")
         if not license_val:
-            link = soup.find("link", rel=lambda r: r and "license" in str(r).lower())
+            link = soup.find("link", rel="license")
             if link and link.get("href"):
                 license_val = str(link["href"]).strip()
 

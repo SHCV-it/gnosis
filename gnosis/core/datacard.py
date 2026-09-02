@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from urllib.parse import urlparse
 
 SCHEMA_VERSION = "1.0"
 
@@ -24,16 +25,18 @@ def build_data_card(pages: list[dict], job: dict) -> dict:
         if p.get("retention_ratio") is not None
     ]
     licenses = sorted({p["license"] for p in pages if p.get("license")})
-    ai_hosts = len({p["url"] for p in pages if p.get("ai_txt")})
-    llms_hosts = len({p["url"] for p in pages if p.get("llms_txt")})
+    ai_hosts = len({urlparse(p["url"]).netloc for p in pages if p.get("ai_txt")})
+    llms_hosts = len({urlparse(p["url"]).netloc for p in pages if p.get("llms_txt")})
     return {
         "schema_version": SCHEMA_VERSION,
         "job": job,
         "summary": {
             "pages": n,
-            "succeeded": sum(1 for p in pages if p.get("status_code", 0) < 400),
+            "succeeded": sum(
+                1 for p in pages if not p.get("error") and p.get("status_code", 0) < 400
+            ),
             "failed": sum(
-                1 for p in pages if p.get("status_code", 0) >= 400 or p.get("error")
+                1 for p in pages if p.get("error") or p.get("status_code", 0) >= 400
             ),
             "total_raw_bytes": total_raw,
             "total_markdown_chars": total_md,
