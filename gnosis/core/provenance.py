@@ -94,6 +94,8 @@ def build_frontmatter(
         frontmatter["ai_txt"] = metadata["ai_txt"]
     if metadata.get("llms_txt"):
         frontmatter["llms_txt"] = True
+    if metadata.get("policy_decision"):
+        frontmatter["policy_decision"] = metadata["policy_decision"]
 
     for key in _HEADER_PROVENANCE_KEYS:
         value = fetch.response_headers.get(key)
