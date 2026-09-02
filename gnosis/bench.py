@@ -17,6 +17,7 @@ from rich.table import Table
 from gnosis.config.settings import Settings, load_config
 from gnosis.core.converter import HTMLToMarkdownConverter
 from gnosis.core.downloader import Downloader, DownloadError
+from gnosis.core.network import PrivateNetworkBlocked
 from gnosis.core.provenance import build_frontmatter
 
 console = Console()
@@ -87,7 +88,7 @@ async def _run(urls: list[str], settings: Settings, concurrency: int) -> list[di
                     "markdown_chars": len(markdown),
                     "provenance_complete": _CORE_PROVENANCE <= set(fm),
                 }
-            except DownloadError as exc:
+            except (DownloadError, PrivateNetworkBlocked) as exc:
                 return {
                     "url": url,
                     "error": str(exc),
@@ -127,6 +128,7 @@ def _emit(results: list[dict], output: Path, url_list: list[str]) -> None:
         "token_estimate": token_estimate,
         "per_url": results,
     }
+    output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(scorecard, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     table = Table(title="gnosis bench scorecard")

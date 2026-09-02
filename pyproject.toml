@@ -40,6 +40,9 @@ qmd = [
     "torch>=2.0.0",
     "transformers>=4.30.0",
 ]
+docs = [
+    "markitdown>=0.1",
+]
 
 [project.urls]
 Homepage = "https://github.com/SHCV-it/gnosis"
@@ -50,6 +53,7 @@ Changelog = "https://github.com/SHCV-it/gnosis/blob/main/CHANGELOG.md"
 [project.scripts]
 gnosis = "gnosis.cli.main:main"
 gnosis-bench = "gnosis.bench:bench"
+gnosis-doc = "gnosis.integrations.documents:main"
 
 [tool.setuptools.packages.find]
 exclude = ["tests", "tests.*"]
