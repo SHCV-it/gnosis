@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gnosis-markdown"
-version = "1.2.0"
+version = "1.2.1"
 description = "Web scraper and crawler that converts websites to clean Markdown with byte-level provenance for LLM/RAG knowledge bases"
 readme = "README.md"
 license = "MIT"

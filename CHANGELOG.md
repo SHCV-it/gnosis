@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1] - 2026-09-02
+
+### Fixed
+- WARC file appends instead of truncating on re-crawl
+- resume re-expands the crawl frontier (dedup skips re-save)
+- honest wording: raw response-body bytes, not wire bytes
+
 ## [1.2.0] - 2026-09-02
 
 ### Added
