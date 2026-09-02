@@ -53,10 +53,14 @@ def main() -> None:
         ) from exc
 
     mcp = FastMCP("gnosis")
+
+    async def _tool(url: str) -> dict:
+        # The tool surface is `url` ONLY — never expose `settings`, or a client
+        # could pass allow_private_network=true and disable the SSRF guard.
+        return await fetch_and_convert(url)
+
     mcp.tool(
         name="fetch_and_convert",
         description="Fetch a URL and convert it to Markdown with byte-level provenance.",
-    )(
-        fetch_and_convert
-    )
+    )(_tool)
     mcp.run()
