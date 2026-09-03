@@ -161,3 +161,14 @@ def test_overlap_flush_stays_in_budget():
     for c in chunks:
         assert c.token_count <= 64, c.token_count
         assert md[c.start:c.end] == c.content
+
+
+def test_fence_aware_headings():
+    """Regression (#62): '#' lines inside fenced code blocks must not be treated
+    as headings."""
+    md = "# Real\n\n```python\n# not a heading\n```\n\n## After\n\ncontent"
+    chunks = chunk_markdown(md, max_tokens=128, overlap_tokens=0)
+    paths = [c.heading_path for c in chunks]
+    assert all("not a heading" not in p for p in paths)
+    assert any(p == ["Real"] for p in paths)
+    assert any(p == ["Real", "After"] for p in paths)

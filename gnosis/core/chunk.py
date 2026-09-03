@@ -196,11 +196,21 @@ def chunk_markdown(
     """Split markdown into heading-scoped, token-budgeted chunks."""
     lines = markdown.split("\n")
     offs = _line_offsets(lines)
-    headings = [
-        (i, len(m.group(1)), m.group(2).strip())
-        for i, line in enumerate(lines)
-        if (m := _HEADING_RE.match(line))
-    ]
+    # fence-aware heading detection: "# ..." inside ```/~~~ code blocks is code
+    headings = []
+    fence = ""
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if fence:
+            if stripped.startswith(fence):
+                fence = ""
+            continue
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            fence = stripped[:3]
+            continue
+        m = _HEADING_RE.match(line)
+        if m:
+            headings.append((i, len(m.group(1)), m.group(2).strip()))
 
     sections: list[tuple[list[str], int, int]] = []
     if headings:
