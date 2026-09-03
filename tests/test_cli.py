@@ -261,6 +261,7 @@ class TestSinglePage:
         assert card["pages"][0]["policy_decision"]["allowed"] is False
         assert card["pages"][0]["policy_decision"]["rule"] == "no-proprietary"
 
+
     def test_format_json_export(self, server, tmp_path):
         result = run_cli([f"{server}/page", "-o", str(tmp_path), "-f", "-q", "--format", "json"])
         assert result.exit_code == 0
@@ -281,6 +282,29 @@ class TestSinglePage:
         data = json.loads((tmp_path / "documents.json").read_text())
         assert len(data) == len(md_files) >= 1
         assert all(len(r["content_hash"]) == 64 for r in data)
+
+    def test_profile_compliance_blocks_proprietary(self, server, tmp_path):
+        result = run_cli(
+            [f"{server}/proprietary", "-o", str(tmp_path), "-f", "-q", "--profile", "compliance"]
+        )
+        assert result.exit_code != 0
+        assert list(tmp_path.glob("*.md")) == []
+        card = json.loads((tmp_path / "data-card.json").read_text())
+        assert card["pages"][0]["error"].startswith("policy:")
+        assert card["pages"][0]["policy_decision"]["allowed"] is False
+
+    def test_profile_overrides_config_policies(self, server, tmp_path):
+        cfg = tmp_path / "cfg.yaml"
+        cfg.write_text("policies: []\n")  # config allows everything
+        result = run_cli(
+            [f"{server}/proprietary", "-o", str(tmp_path), "-f", "-q", "--config", str(cfg), "--profile", "compliance"]
+        )
+        assert result.exit_code != 0
+        assert list(tmp_path.glob("*.md")) == []
+
+    def test_invalid_profile_rejected(self, server, tmp_path):
+        result = run_cli([f"{server}/page", "-o", str(tmp_path), "-f", "-q", "--profile", "nope"])
+        assert result.exit_code == 2
 
     def test_empty_page_still_written(self, server, tmp_path):
         """Pages with minimal content should still be captured."""
