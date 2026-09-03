@@ -35,9 +35,35 @@ def parse_ai_txt(text: str) -> dict[str, str]:
     return directives
 
 
+_DENY_VALUES = {"deny", "disallow", "no", "opt-out", "optout", "forbidden", "prohibited", "false", "never"}
+_ALLOW_VALUES = {"allow", "yes", "opt-in", "optin", "permitted", "true", "always"}
+
+
+def _normalize_directive(value: str) -> str:
+    """Canonicalise common ai.txt directive values to Allow/Deny."""
+    v = value.strip().lower()
+    if v in _DENY_VALUES:
+        return "Deny"
+    if v in _ALLOW_VALUES:
+        return "Allow"
+    return value.strip()
+
+
 def summarize_ai_txt(directives: dict[str, str]) -> dict[str, str]:
-    """Reduce ai.txt directives to the provenance-relevant subset."""
-    return {k: directives[k] for k in ("training", "data", "allow", "disallow") if k in directives}
+    """Reduce ai.txt directives to the provenance-relevant subset.
+
+    `training`/`data` values are normalised so that Deny/Disallow/no/opt-out
+    all map to "Deny" (and Allow/yes/opt-in to "Allow"); `allow`/`disallow`
+    path lists are kept verbatim.
+    """
+    out: dict[str, str] = {}
+    for key in ("training", "data"):
+        if key in directives:
+            out[key] = _normalize_directive(directives[key])
+    for key in ("allow", "disallow"):
+        if key in directives:
+            out[key] = directives[key]
+    return out
 
 
 async def fetch_host_consent(url: str, downloader) -> dict:

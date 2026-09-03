@@ -16,13 +16,13 @@ def test_get_profile_default_empty():
     assert get_profile("default") == []
 
 
-def test_compliance_denies_proprietary_license():
-    engine = PolicyEngine(get_profile("compliance"))
+def test_strict_optout_denies_proprietary_license():
+    engine = PolicyEngine(get_profile("strict-optout"))
     assert not engine.evaluate("https://x/a", {"license": "All Rights Reserved"}).allowed
 
 
-def test_compliance_denies_training_denied():
-    engine = PolicyEngine(get_profile("compliance"))
+def test_strict_optout_denies_training_denied():
+    engine = PolicyEngine(get_profile("strict-optout"))
     assert not engine.evaluate("https://x/a", {"ai_txt": {"training": "Deny"}}).allowed
 
 
@@ -47,3 +47,16 @@ def test_open_only_denies_canonical_cc_encodings():
 def test_unknown_profile_raises():
     with pytest.raises(ValueError):
         get_profile("nope")
+
+
+def test_strict_optout_blocks_disallow_after_normalization():
+    """Regression (external audit): Training: Disallow / no must be blocked,
+    not just the literal "Deny"."""
+    from gnosis.core.aitext import parse_ai_txt, summarize_ai_txt
+
+    engine = PolicyEngine(get_profile("strict-optout"))
+    for value in ("Disallow", "no", "opt-out", "Deny"):
+        ai = summarize_ai_txt(parse_ai_txt(f"Training: {value}\n"))
+        assert not engine.evaluate("https://x/a", {"ai_txt": ai}).allowed, value
+    ai = summarize_ai_txt(parse_ai_txt("Training: Allow\n"))
+    assert engine.evaluate("https://x/a", {"ai_txt": ai}).allowed

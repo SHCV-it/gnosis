@@ -21,8 +21,10 @@ It is written for two readers who will never run the reference implementation:
 - Someone implementing capture in a different tool, in a different language.
 
 The record is deliberately small. It describes **one HTTP fetch and one derived text
-document**. It says nothing about datasets, corpora, licensing, consent, or model
-training, and it confers no legal presumption of anything.
+document**. It records the licensing, consent, and policy signals it encountered
+(§3.5) and, optionally, a cryptographic signature (§3.6). It confers no legal
+presumption of anything — a recorded opt-out is evidence of a signal, not of
+compliance.
 
 ### 1.1 What this specification is not
 
@@ -181,6 +183,41 @@ A future version may define a digest over the serialised post-render DOM. v1.0 d
 
 ---
 
+### 3.5 Consent, licensing, and policy fields
+
+These record what the producer observed, not what it did about it (§1.1). They
+are **advisory signals**, present only when discovered.
+
+| Field | Type | Semantics |
+|---|---|---|
+| `license` | string | License the page declared (`meta name=license`, `og:license`, or `link rel=license`). Present only when declared. |
+| `ai_txt` | object | Normalised ai.txt directives for the host: `training`/`data` values are canonicalised to `Allow`/`Deny`; `allow`/`disallow` path lists are verbatim. |
+| `llms_txt` | boolean | `true` when the host publishes an llms.txt. |
+| `policy_decision` | object | `{rule, reason, allowed}` — the result of a matching compliance policy rule, if any. |
+
+These fields **MUST NOT** be read as a determination that a capture was lawful
+or authorised. A producer that records `ai_txt: {training: Deny}` and captures
+anyway is describing itself accurately; it is not claiming the capture was
+permitted.
+
+### 3.6 Signature fields (seal of origin)
+
+When a producer signs the record, it **MUST** emit all of:
+
+| Field | Type | Semantics |
+|---|---|---|
+| `signature` | string (base64) | Ed25519 signature over the canonical manifest (all §3 fields plus the recomputed body hash) |
+| `public_key` | string (base64) | The signer's Ed25519 public key |
+| `manifest_sha256` | string (hex) | SHA-256 of the signed canonical manifest |
+| `signed_at` | string (ISO 8601 UTC) | When signing occurred |
+
+Verification **MUST** require a pinned expected public key. A signature that is
+cryptographically valid but whose key is not pinned establishes **integrity,
+not origin** — consumers **MUST NOT** report origin established from an
+unpinned signature.
+
+---
+
 ## 4. Fidelity fields
 
 These describe the lossy step. They are measurements, not guarantees.
@@ -328,4 +365,5 @@ write to the editor.
 
 ## Changelog
 
+**v1.1 (2026-09-03)** — Reconciled with v2.0.0: added §3.5 (consent/licensing/policy fields) and §3.6 (signature fields); corrected the §1 scope statement.
 **v1.0 (2026-09-03)** — Initial draft.

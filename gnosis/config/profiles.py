@@ -1,11 +1,25 @@
-"""Named compliance policy presets for the `--profile` CLI flag."""
+"""Named compliance policy presets for the `--profile` CLI flag.
+
+Each profile is a list of PolicyEngine rules. The names are chosen to be honest
+about what they actually enforce (literal matching, deny-overrides):
+
+- `default` — no policies.
+- `strict-optout` — blocks sites whose ai.txt says training/data is denied
+  (normalised: Deny/Disallow/no/opt-out) and pages whose `license` field
+  contains "All Rights Reserved". It does NOT attempt full license
+  classification — it matches a specific, documented set of literals.
+- `open-only` — blocks licenses whose field contains "All Rights Reserved",
+  "proprietary", "by-nc", or "by-nd" (non-open per the Open Definition).
+
+These are opt-in convenience presets, not legal advice. They are a starting
+point; write explicit `policies:` rules for anything you must rely on.
+"""
 
 from __future__ import annotations
 
-# Each profile is an ordered list of PolicyEngine rules (see gnosis/core/policy.py).
 PROFILES: dict[str, list[dict]] = {
     "default": [],
-    "compliance": [
+    "strict-optout": [
         {
             "name": "no-training-denied",
             "deny_if": {"ai_txt": {"training": "Deny"}},

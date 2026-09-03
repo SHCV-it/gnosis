@@ -49,9 +49,9 @@ def test_generate_keypair_derives_public_key(keypair):
 
 
 def test_sign_verify_roundtrip(keypair):
-    private_pem, _ = keypair
+    private_pem, public_b64 = keypair
     signed = sign_document(make_doc(), private_pem)
-    ok, reason = verify_document(signed)
+    ok, reason = verify_document(signed, expected_public_key=public_b64)
     assert ok, reason
     assert "signature valid" in reason
 
@@ -160,9 +160,37 @@ def test_attacker_resign_rejected_when_pinned(keypair):
     _, real_public = keypair
     attacker_priv, _ = generate_keypair()
     forged = sign_document(make_doc(), attacker_priv)
-    # self-consistent but NOT by the real producer
+    # unpinned verify is NOT success (origin not established)
     ok, reason = verify_document(forged)
-    assert ok and "identity NOT pinned" in reason
+    assert not ok and "NOT pinned" in reason
     ok, reason = verify_document(forged, expected_public_key=real_public)
     assert not ok
     assert "public key mismatch" in reason
+
+
+def test_sign_handles_unquoted_dates(keypair):
+    """Regression: YAML coerces unquoted dates to date objects, which must not
+    crash the JSON manifest builder."""
+    private_pem, public_b64 = keypair
+    doc = (
+        "---\nurl: https://x\n"
+        "published_time: 2026-01-15\n"
+        "modified_time: 2026-02-20\n"
+        "content_hash: abc\nbytes_sha256: def\nstatus_code: 200\n"
+        "fetched_at: '2026-09-03T00:00:00Z'\ngenerator: gnosis/2.0.0\n---\n\n# Body\n"
+    )
+    signed = sign_document(doc, private_pem)
+    ok, _ = verify_document(signed, expected_public_key=public_b64)
+    assert ok
+
+
+def test_resign_replaces_not_duplicates(keypair):
+    """Regression: re-signing must replace the signature block, not emit
+    duplicate signature/public_key keys."""
+    private_pem, public_b64 = keypair
+    once = sign_document(make_doc(), private_pem)
+    twice = sign_document(once, private_pem)
+    assert twice.count("signature:") == 1
+    assert twice.count("public_key:") == 1
+    ok, _ = verify_document(twice, expected_public_key=public_b64)
+    assert ok

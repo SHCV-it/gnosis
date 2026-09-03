@@ -1,11 +1,16 @@
 """Compliance policy engine: granular allow/deny rules, every decision logged.
 
 A policy is an ordered list of rules. Each rule can `allow_if` or `deny_if` a
-capture based on the page's license, ai.txt directives, or URL path. **Allow
-rules always take precedence**: if any allow rule matches, the capture is
-allowed; otherwise the first matching deny rule blocks. Every explicit decision
-is recorded in the provenance record + data card so the enforcement is
-auditable, not just applied.
+capture based on the page's license, ai.txt directives, or URL path. **Deny
+rules always take precedence** (deny-overrides): if any deny rule matches, the
+capture is blocked; otherwise the first matching allow rule permits it. This is
+the safe failure direction — a convenience path rule can never override an
+explicit opt-out.
+
+Within a single `deny_if` / `allow_if`, the listed conditions are **OR**-ed: a
+match on ANY one of them (license substring, path glob, ai.txt directive) is
+enough to trigger the rule. Every explicit decision is recorded in the
+provenance record + data card.
 """
 
 from __future__ import annotations
@@ -81,9 +86,9 @@ class PolicyEngine:
 
     def evaluate(self, url: str, metadata: dict) -> PolicyDecision:
         for r in self.rules:
-            if _matches(r.allow, url, metadata):
-                return PolicyDecision(True, r.name or "allow", "")
-        for r in self.rules:
             if _matches(r.deny, url, metadata):
                 return PolicyDecision(False, r.name or "deny", r.reason)
+        for r in self.rules:
+            if _matches(r.allow, url, metadata):
+                return PolicyDecision(True, r.name or "allow", "")
         return PolicyDecision(True)

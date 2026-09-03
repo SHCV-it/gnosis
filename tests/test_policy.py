@@ -26,16 +26,17 @@ def test_deny_by_path():
     assert engine.evaluate("https://x/docs", {}).allowed
 
 
-def test_allow_precedes_deny():
+def test_deny_overrides_allow():
+    """Deny-overrides: a matching allow path must NOT override an explicit opt-out."""
     engine = PolicyEngine(
         [
-            {"name": "deny-cc", "deny_if": {"license": ["CC-BY"]}, "reason": "x"},
-            {"name": "allow-cc", "allow_if": {"license": ["CC-BY"]}},
+            {"name": "allow-docs", "allow_if": {"path": ["/docs/*"]}},
+            {"name": "deny-training", "deny_if": {"ai_txt": {"training": "Deny"}}, "reason": "no training"},
         ]
     )
-    d = engine.evaluate("https://x/a", {"license": "CC-BY 4.0"})
-    assert d.allowed
-    assert d.rule == "allow-cc"
+    d = engine.evaluate("https://x/docs/a", {"ai_txt": {"training": "Deny"}})
+    assert not d.allowed
+    assert d.rule == "deny-training"
 
 
 def test_no_rules_allows():

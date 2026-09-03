@@ -283,9 +283,9 @@ class TestSinglePage:
         assert len(data) == len(md_files) >= 1
         assert all(len(r["content_hash"]) == 64 for r in data)
 
-    def test_profile_compliance_blocks_proprietary(self, server, tmp_path):
+    def test_profile_strict_optout_blocks_proprietary(self, server, tmp_path):
         result = run_cli(
-            [f"{server}/proprietary", "-o", str(tmp_path), "-f", "-q", "--profile", "compliance"]
+            [f"{server}/proprietary", "-o", str(tmp_path), "-f", "-q", "--profile", "strict-optout"]
         )
         assert result.exit_code != 0
         assert list(tmp_path.glob("*.md")) == []
@@ -297,7 +297,10 @@ class TestSinglePage:
         cfg = tmp_path / "cfg.yaml"
         cfg.write_text("policies: []\n")  # config allows everything
         result = run_cli(
-            [f"{server}/proprietary", "-o", str(tmp_path), "-f", "-q", "--config", str(cfg), "--profile", "compliance"]
+            [
+                f"{server}/proprietary", "-o", str(tmp_path), "-f", "-q",
+                "--config", str(cfg), "--profile", "strict-optout",
+            ]
         )
         assert result.exit_code != 0
         assert list(tmp_path.glob("*.md")) == []
@@ -337,7 +340,7 @@ class TestSinglePage:
     def test_sign_flag_produces_verifiable_document(self, server, tmp_path):
         from gnosis.core.signing import generate_keypair, verify_document
 
-        priv, _ = generate_keypair()
+        priv, pub = generate_keypair()
         keyfile = tmp_path / "key.txt"
         keyfile.write_text(priv)
         result = run_cli(
@@ -345,7 +348,7 @@ class TestSinglePage:
         )
         assert result.exit_code == 0
         doc = next(tmp_path.glob("*.md")).read_text()
-        ok, _ = verify_document(doc)
+        ok, _ = verify_document(doc, expected_public_key=pub)
         assert ok
 
     def test_empty_page_still_written(self, server, tmp_path):

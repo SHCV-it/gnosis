@@ -98,6 +98,15 @@ gnosis-doc report.pdf -o report.md
   of the raw response-body bytes) — hash the bytes, not the derived text.
 - **WARC export** (`--warc`) + a content-addressed store keyed on `bytes_sha256`.
 - `llms.txt` + `llms-full.txt` emitted on every crawl.
+- **ai.txt consent discovery** — the host's `ai.txt` directives and `llms.txt`
+  presence are recorded in the frontmatter (`ai_txt` / `llms_txt`).
+
+> **ai.txt is advisory, not enforced.** gnosis *records* a site's ai.txt
+> opt-out (`Training: Deny`) in the frontmatter but does not, by default,
+> refuse to scrape it. If you want scraping to *stop* at opt-outs, enable a
+> policy: `--profile strict-optout` or write an explicit `deny_if` rule.
+> "We record the opt-out and scrape anyway" is exactly the behavior a
+> regulator will ask about — decide it deliberately, don't let it be a default.
 
 **Fetching & access**
 - Static-first async fetch (`httpx`); optional JS rendering via a sidecar binary.

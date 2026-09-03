@@ -38,14 +38,28 @@ def _ed25519():
     return serialization, Ed25519PrivateKey, Ed25519PublicKey
 
 
+def _json_safe(value):
+    """Coerce a YAML-parsed value to a JSON-serialisable one (dates etc.)."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    return str(value)
+
+
 def canonical_manifest(markdown: str, metadata: dict) -> str:
     """Canonical JSON of every provenance field, with the body hash recomputed.
 
     Every frontmatter key is signed EXCEPT the signature block, so tampering any
     provenance field invalidates the signature. `content_hash` is always
-    recomputed from the body so body tampering is caught too.
+    recomputed from the body so body tampering is caught too. Non-JSON YAML
+    values (e.g. unquoted dates) are coerced to strings.
     """
-    manifest = {k: v for k, v in metadata.items() if k not in _SIGNATURE_FIELDS}
+    manifest = {
+        k: _json_safe(v) for k, v in metadata.items() if k not in _SIGNATURE_FIELDS
+    }
     manifest["content_hash"] = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
     return json.dumps(manifest, sort_keys=True, separators=(",", ":"))
 
@@ -131,8 +145,16 @@ def split_frontmatter(document: str) -> tuple[dict, str]:
     return metadata, body
 
 
+def _is_signature_line(line: str) -> bool:
+    stripped = line.lstrip()
+    return any(stripped.startswith(f"{f}:") for f in _SIGNATURE_FIELDS)
+
+
 def sign_document(document: str, private_key_pem: str) -> str:
-    """Sign a rendered document; return a new document with signature fields."""
+    """Sign a rendered document; return a new document with signature fields.
+
+    Re-signing replaces any existing signature block (no duplicate YAML keys).
+    """
     metadata, markdown = split_frontmatter(document)
     sig = sign_manifest(markdown, metadata, private_key_pem)
     if not document.startswith("---"):
@@ -142,8 +164,9 @@ def sign_document(document: str, private_key_pem: str) -> str:
     end = next(
         (i for i in range(1, len(lines)) if lines[i].strip() == "---"), len(lines) - 1
     )
+    kept = [ln for ln in lines[:end] if not _is_signature_line(ln)]
     sig_lines = yaml.safe_dump(sig, sort_keys=False).rstrip("\n").split("\n")
-    return "\n".join(lines[:end] + sig_lines + lines[end:])
+    return "\n".join(kept + sig_lines + lines[end:])
 
 
 def verify_document(
@@ -164,7 +187,8 @@ def verify_document(
         return False, "document is not signed (missing signature/public_key)"
     if expected_public_key and public_key != expected_public_key:
         return False, "public key mismatch — NOT signed by the expected producer"
-    if verify_signature(markdown, metadata, signature, public_key):
-        pinned = "identity pinned" if expected_public_key else "identity NOT pinned (pass --public-key)"
-        return True, f"signature valid ({pinned})"
-    return False, "signature INVALID — body or provenance was modified after signing"
+    if not verify_signature(markdown, metadata, signature, public_key):
+        return False, "signature INVALID — body or provenance was modified after signing"
+    if not expected_public_key:
+        return False, "signature valid but identity NOT pinned — pass --public-key to verify the producer"
+    return True, "signature valid (identity pinned)"
