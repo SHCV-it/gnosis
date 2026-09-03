@@ -267,3 +267,14 @@ def test_redirect_hop_robots_enforced(echo_server):
         a.server_close()
         b.shutdown()
         b.server_close()
+
+
+def test_same_origin_scheme_sensitive():
+    """Regression (P1): origin comparison must include scheme, so an https->http
+    downgrade redirect is treated as cross-origin and drops credentials."""
+    from gnosis.core.downloader import _same_origin
+
+    assert _same_origin("https://h/p", "http://h/p") is False  # downgrade
+    assert _same_origin("http://h/p", "http://H/p") is True    # host case-insensitive
+    assert _same_origin("http://h/p", "http://h:80/p") is True  # effective port
+    assert _same_origin("http://h/p", "http://h:8080/p") is False

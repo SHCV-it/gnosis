@@ -65,6 +65,22 @@ class FetchResult:
     js_executed: bool = False
 
 
+def _effective_port(parsed) -> int:
+    if parsed.port is not None:
+        return parsed.port
+    return 443 if parsed.scheme == "https" else 80
+
+
+def _same_origin(a: str, b: str) -> bool:
+    """RFC 6454 origin comparison (scheme + host + effective port)."""
+    pa, pb = urlparse(a), urlparse(b)
+    return (
+        pa.scheme == pb.scheme
+        and (pa.hostname or "").lower() == (pb.hostname or "").lower()
+        and _effective_port(pa) == _effective_port(pb)
+    )
+
+
 class Downloader:
     """
     Async HTTP downloader with retry, rate limiting, and auth support.
@@ -163,7 +179,6 @@ class Downloader:
             try:
                 current = url
                 chain: list[str] = []
-                original_netloc = urlparse(url).netloc
                 while True:
                     if not await self._robots.is_allowed(current):
                         raise RobotsDisallowed(current)
@@ -172,20 +187,18 @@ class Downloader:
                         check_ip_literal(urlparse(current).hostname or "")
 
                     hop_headers: dict[str, str] = {}
-                    if urlparse(current).netloc == original_netloc:
+                    if _same_origin(current, url):
                         hop_headers.update(sensitive)
                         if extra_headers:
                             hop_headers.update(extra_headers)
 
                     response = await client.get(current, headers=hop_headers or None)
 
-                    if response.is_redirect:
-                        location = response.headers.get("location")
-                        if not location:
-                            raise DownloadError(f"redirect without Location: {current}")
+                    if response.has_redirect_location:
+                        location = response.headers.get("location") or ""
                         chain.append(current)
                         current = urljoin(current, location)
-                        if len(chain) >= max_redirects:
+                        if len(chain) > max_redirects:
                             raise DownloadError(f"too many redirects: {url}")
                         continue
 
