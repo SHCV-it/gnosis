@@ -111,7 +111,7 @@ def test_parse_ai_txt_comments_and_empty_values():
 def test_llms_txt_recorded_when_ai_txt_absent():
     """Regression (panel P1): llms.txt must be recorded even when ai.txt is
     absent (previously the ai.txt 404 short-circuited the llms.txt probe)."""
-    from http.server import BaseHTTPRequestHandler, HTTPServer
+    from http.server import HTTPServer
 
     class H(BaseHTTPRequestHandler):
         def do_GET(self):
@@ -234,3 +234,45 @@ def test_parse_ai_txt_empty_ua_group_falls_back_to_wildcard():
     that shadows or drops them)."""
     text = "User-Agent:\nTraining: Deny\n"
     assert parse_ai_txt(text, user_agent="Gnosis/2.0")["training"] == "Deny"
+
+
+def test_transient_consent_failure_not_cached():
+    """Regression (#47): a 500/timeout on ai.txt must NOT be cached as 'no
+    consent' — a later healthy fetch must re-probe."""
+    from http.server import HTTPServer
+
+    hits = {"n": 0}
+
+    class Flaky(_Handler):
+        def do_GET(self):
+            if self.path == "/ai.txt":
+                hits["n"] += 1
+                if hits["n"] == 1:
+                    body = b"boom"
+                    self.send_response(500)
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+            super().do_GET()
+
+    srv = HTTPServer(("127.0.0.1", 8953), Flaky)
+    srv.allow_reuse_address = True
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    try:
+        async def _run():
+            settings = DownloaderSettings(
+                rate_limit_ms=0, retries=0, allow_private_network=True, respect_robots=False
+            )
+            async with Downloader(settings) as dl:
+                return await fetch_host_consent("http://127.0.0.1:8953/page", dl)
+
+        first = asyncio.run(_run())
+        assert "ai_txt" not in first  # 500 -> nothing recorded, not cached
+        second = asyncio.run(_run())   # must re-fetch (transient was not cached)
+        assert second["ai_txt"]["training"] == "Allow"
+        assert hits["n"] == 2
+    finally:
+        srv.shutdown()
+        srv.server_close()
