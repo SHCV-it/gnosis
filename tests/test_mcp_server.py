@@ -34,10 +34,12 @@ class _Handler(BaseHTTPRequestHandler):
 @pytest.fixture(scope="module")
 def server():
     srv = HTTPServer(("127.0.0.1", PORT), _Handler)
+    srv.allow_reuse_address = True
     thread = threading.Thread(target=srv.serve_forever, daemon=True)
     thread.start()
     yield f"http://127.0.0.1:{PORT}/page"
     srv.shutdown()
+    srv.server_close()
 
 
 def test_fetch_and_convert_returns_provenance(server):

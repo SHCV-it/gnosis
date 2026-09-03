@@ -35,10 +35,12 @@ class _EchoHandler(BaseHTTPRequestHandler):
 @pytest.fixture(scope="module")
 def echo_server():
     server = HTTPServer(("127.0.0.1", ECHO_PORT), _EchoHandler)
+    server.allow_reuse_address = True
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     yield f"http://127.0.0.1:{ECHO_PORT}/check"
     server.shutdown()
+    server.server_close()
 
 
 def fetch_headers(settings: DownloaderSettings, url: str) -> dict:

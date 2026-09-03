@@ -45,10 +45,12 @@ class _Handler(BaseHTTPRequestHandler):
 @pytest.fixture(scope="module")
 def server():
     srv = HTTPServer(("127.0.0.1", PORT), _Handler)
+    srv.allow_reuse_address = True
     thread = threading.Thread(target=srv.serve_forever, daemon=True)
     thread.start()
     yield f"http://127.0.0.1:{PORT}"
     srv.shutdown()
+    srv.server_close()
 
 
 def test_parse_ai_txt():
@@ -128,6 +130,8 @@ def test_llms_txt_recorded_when_ai_txt_absent():
             pass
 
     srv = HTTPServer(("127.0.0.1", 8949), H)
+
+    srv.allow_reuse_address = True
     thread = threading.Thread(target=srv.serve_forever, daemon=True)
     thread.start()
     try:
@@ -143,3 +147,4 @@ def test_llms_txt_recorded_when_ai_txt_absent():
         assert "ai_txt" not in consent
     finally:
         srv.shutdown()
+        srv.server_close()

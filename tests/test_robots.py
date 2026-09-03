@@ -49,10 +49,12 @@ class _RobotsHandler(BaseHTTPRequestHandler):
 @pytest.fixture(scope="module")
 def robots_server():
     server = HTTPServer(("127.0.0.1", ROBOTS_PORT), _RobotsHandler)
+    server.allow_reuse_address = True
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     yield f"http://127.0.0.1:{ROBOTS_PORT}"
     server.shutdown()
+    server.server_close()
 
 
 class _NoRobotsHandler(BaseHTTPRequestHandler):
@@ -73,10 +75,12 @@ NO_ROBOTS_PORT = 8944
 @pytest.fixture(scope="module")
 def no_robots_server():
     server = HTTPServer(("127.0.0.1", NO_ROBOTS_PORT), _NoRobotsHandler)
+    server.allow_reuse_address = True
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     yield f"http://127.0.0.1:{NO_ROBOTS_PORT}"
     server.shutdown()
+    server.server_close()
 
 
 class TestRobotsChecker:
