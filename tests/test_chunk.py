@@ -122,3 +122,42 @@ def test_hard_token_budget_enforced_cjk():
     for c in chunks:
         assert c.token_count <= 100, c.token_count
         assert md[c.start:c.end] == c.content
+
+
+def test_cjk_overlap_stays_in_budget():
+    """Regression (#50): overlap tail must be token-aware; CJK chunks must not
+    exceed max_tokens when overlap is enabled."""
+    md = "# H\n\n" + "\u3002".join(["\u6c49\u5b57" * 100] * 8) + "\u3002"
+    chunks = chunk_markdown(md, max_tokens=64, overlap_tokens=16)
+    assert chunks
+    for c in chunks:
+        assert c.token_count <= 64, c.token_count
+        assert md[c.start:c.end] == c.content
+
+
+def test_oversized_flush_resets_token_count():
+    """Regression (#51): a stale cur_tokens after an oversized-piece flush must
+    not inflate the next window's token_count."""
+    from gnosis.core.chunk import estimate_tokens
+
+    md = (
+        "# H\n\n"
+        + "word " * 10 + ". "
+        + "\u6c49" * 600 + "\u3002 "
+        + "word " * 10 + ". "
+        + "word " * 10 + "."
+    )
+    chunks = chunk_markdown(md, max_tokens=128, overlap_tokens=0)
+    for c in chunks:
+        assert c.token_count == estimate_tokens(c.content), c.token_count
+
+
+def test_overlap_flush_stays_in_budget():
+    """Regression (reviewer P1): after carrying the overlap tail, the next
+    window must still respect max_tokens even for a large incoming piece."""
+    md = "\u6c49" * 50 + "\u3002 " + "\u6c49" * 50
+    chunks = chunk_markdown(md, max_tokens=64, overlap_tokens=16)
+    assert chunks
+    for c in chunks:
+        assert c.token_count <= 64, c.token_count
+        assert md[c.start:c.end] == c.content

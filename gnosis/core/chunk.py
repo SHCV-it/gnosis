@@ -76,12 +76,26 @@ def _pieces(text: str, base: int) -> list[tuple[str, int, int]]:
     return pieces
 
 
+def _token_tail(text: str, overlap_tokens: int) -> str:
+    """Longest suffix of text with a token estimate <= overlap_tokens.
+
+    Token-aware (not char-based): CJK is 1 token/char, so a char-based tail
+    would exceed the overlap budget.
+    """
+    if overlap_tokens <= 0:
+        return ""
+    start = max(0, len(text) - overlap_tokens * CHARS_PER_TOKEN)
+    tail = text[start:]
+    while tail and estimate_tokens(tail) > overlap_tokens:
+        tail = tail[1:]
+    return tail
+
+
 def _split_oversized(
     text: str, base: int, max_tokens: int, overlap_tokens: int
 ) -> list[tuple[str, int, int, int]]:
     """Pack pieces into token-budgeted windows with overlap (citation spans may overlap)."""
     pieces = _pieces(text, base)
-    overlap_chars = overlap_tokens * CHARS_PER_TOKEN
     windows: list[tuple[str, int, int, int]] = []
     cur: list[str] = []
     cur_start = cur_end = base
@@ -94,13 +108,15 @@ def _split_oversized(
             if cur:
                 windows.append(("".join(cur), cur_start, cur_end, cur_tokens))
                 cur = []
+                cur_tokens = 0
             windows.extend(_hard_split(ptext, pstart, max_tokens))
             cur_start = cur_end = pend
             continue
         if cur and cur_tokens + ptokens > max_tokens:
             content = "".join(cur)
             windows.append((content, cur_start, cur_end, cur_tokens))
-            tail = content[-overlap_chars:] if overlap_chars else ""
+            # clamp the overlap so tail + next piece stays within max_tokens
+            tail = _token_tail(content, min(overlap_tokens, max(0, max_tokens - ptokens)))
             cur = [tail] if tail else []
             cur_start = cur_end - len(tail)
             cur_end = cur_start + len(tail)
