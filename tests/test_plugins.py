@@ -52,3 +52,18 @@ def test_hooks_apply_in_order(tmp_path):
 def test_missing_plugin_file_raises(tmp_path):
     with pytest.raises(FileNotFoundError):
         PluginManager([str(tmp_path / "nope.py")])
+
+
+def test_pre_fetch_receives_effective_headers(tmp_path):
+    """Regression (#63): pre_fetch must see the effective request headers, not {}."""
+    from gnosis.core.plugins import PluginManager
+
+    plug = tmp_path / "plug.py"
+    plug.write_text(
+        "def pre_fetch(url, headers):\n"
+        "    headers['X-Saw-UA'] = headers.get('User-Agent', '')\n"
+        "    return url, headers\n"
+    )
+    mgr = PluginManager([str(plug)])
+    url, headers = mgr.pre_fetch("http://a", {"User-Agent": "Gnosis/2.0"})
+    assert headers["X-Saw-UA"] == "Gnosis/2.0"

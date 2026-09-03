@@ -246,6 +246,16 @@ class Downloader:
 
         raise DownloadError(f"Failed to download {url}: {last_error}") from last_error
 
+    def effective_headers(self) -> dict[str, str]:
+        """The headers a request will carry (defaults + auth/custom)."""
+        headers = {
+            "User-Agent": self.settings.user_agent,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+        }
+        headers.update(self.settings.request_headers())
+        return headers
+
     async def fetch(self, url: str) -> str:
         """
         Fetch the HTML content of a URL.

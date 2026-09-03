@@ -148,7 +148,7 @@ class Crawler:
             # Fetch the batch in parallel; exceptions are caught per-page
             async def _fetch(u: str):
                 if self._pre_fetch is not None:
-                    new_url, headers = self._pre_fetch(u, {})
+                    new_url, headers = self._pre_fetch(u, self.downloader.effective_headers())
                     return await self.downloader.fetch_result(new_url, headers)
                 return await self.downloader.fetch_result(u)
 
