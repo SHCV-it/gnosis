@@ -1,5 +1,36 @@
 # Changelog
 
+## [2.2.0] - 2026-09-03
+
+### Security
+- auth/custom headers no longer leak to cross-origin redirect targets; manual
+  redirect handling re-runs robots + per-origin rate-limit + SSRF on every hop
+- WARC no longer persists URL-embedded credentials
+- response-body size cap (50 MiB) guards unbounded memory
+
+### Crawl / resume
+- query-string and dotted-directory link resolution fixed (no silent page loss)
+- checkpoint writes are atomic; the crawl frontier is persisted so resume grows
+  past max_pages; conditional GET (304/If-None-Match) skips unchanged downloads
+
+### Consent / policy
+- ai.txt User-Agent groups match by product-token prefix; directive values are
+  normalised (Deny/Disallow/no/opt-out); transient failures are not cached as
+  "no consent"; strict-optout enforces real Disallow: opt-outs; path-scoped
+  llms.txt is probed
+
+### Chunking / extraction / signing
+- token-aware overlap + cur_tokens reset keep chunks within the token budget
+- fence-aware heading detection; heading content-link text preserved; shadow
+  table dedupe no longer drops summary tables; ol start tolerance
+- signing: fractional-second datetimes, non-string YAML keys, reserved
+  body_sha256, exact frontmatter fence, 404-vs-transient consent caching
+
+### DX / docs
+- pre_fetch receives effective request headers; --sign-key accepts a path or
+  PEM; _read_md_body column-0 fence; README CLI flags + entry points; stale
+  versions corrected
+
 ## [2.1.1] - 2026-09-03
 
 ### Changed
