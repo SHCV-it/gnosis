@@ -6,14 +6,23 @@ content is not re-saved, and the manifest/llms.txt accumulate across runs.
 """
 
 import json
+import os
 from pathlib import Path
 
 CHECKPOINT_FILENAME = ".gnosis-checkpoint.json"
 
 
 def save_checkpoint(output_dir: Path, seen_hashes: set[str], manifest: list[dict]) -> None:
+    """Atomically persist the checkpoint (temp file + rename).
+
+    A crash mid-write must never leave a truncated checkpoint that silently
+    wipes resume state — the old content survives until the rename commits.
+    """
     data = {"seen_hashes": sorted(seen_hashes), "manifest": manifest}
-    (output_dir / CHECKPOINT_FILENAME).write_text(json.dumps(data), encoding="utf-8")
+    path = output_dir / CHECKPOINT_FILENAME
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data), encoding="utf-8")
+    os.replace(tmp, path)
 
 
 def load_checkpoint(output_dir: Path) -> tuple[set[str], list[dict]]:
