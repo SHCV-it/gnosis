@@ -9,8 +9,11 @@ explicit opt-out.
 
 Within a single `deny_if` / `allow_if`, the listed conditions are **OR**-ed: a
 match on ANY one of them (license substring, path glob, ai.txt directive) is
-enough to trigger the rule. Every explicit decision is recorded in the
-provenance record + data card.
+enough to trigger the rule. `ai_txt.disallow` is special: it matches the URL
+path against the SITE's ai.txt `Disallow:` directive (robots.txt-style — "/"
+disallows all, a prefix disallows that subtree); the rule value is just a
+trigger. Every explicit decision is recorded in the provenance record + data
+card.
 """
 
 from __future__ import annotations
