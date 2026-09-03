@@ -309,3 +309,39 @@ def test_extract_license_not_substring_matched():
     )
     meta = converter.extract_metadata(html)
     assert meta["license"] == ""
+
+
+def test_heading_content_link_text_preserved():
+    """Regression (#56): an in-page content link inside a heading must not be
+    stripped (only permalink symbols are)."""
+    converter = HTMLToMarkdownConverter()
+    html = (
+        "<html><body><main><h2>See <a href='#install'>Installation guide</a></h2>"
+        "<h3>More<a class='headerlink' href='#more'>&para;</a></h3>"
+        + "content " * 40 + "</main></body></html>"
+    )
+    md = converter.convert(html)
+    assert "Installation guide" in md
+    assert "&para;" not in md
+
+
+def test_summary_table_not_dropped():
+    """Regression (#57): a legitimate single-row summary table sharing a header
+    with a sibling data table must not be deleted."""
+    converter = HTMLToMarkdownConverter()
+    html = (
+        "<html><body><main>"
+        "<table><tr><th>Name</th><td>Alice</td></tr></table>"  # summary (has td)
+        "<table><tr><th>Name</th><th>Role</th></tr><tr><td>Bob</td><td>Admin</td></tr></table>"
+        + "content " * 40 + "</main></body></html>"
+    )
+    md = converter.convert(html)
+    assert "Alice" in md
+
+
+def test_ol_non_numeric_start_no_crash():
+    """Regression (#58): <ol start='abc'> must not crash conversion."""
+    converter = HTMLToMarkdownConverter()
+    html = "<html><body><main><ol start='abc'><li>one</li><li>two</li></ol>" + "content " * 40 + "</main></body></html>"
+    md = converter.convert(html)
+    assert "one" in md and "two" in md
