@@ -9,7 +9,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import pytest
 
 from gnosis.config.settings import AuthSettings, DownloaderSettings, expand_env
-from gnosis.core.downloader import Downloader
+from gnosis.core.downloader import Downloader, RobotsDisallowed
 
 ECHO_PORT = 8941
 
@@ -175,3 +175,95 @@ def test_rate_limit_per_host_not_global():
     r = asyncio.run(_run())
     assert r["a"] >= 0.8, f"host A did not wait: {r['a']:.3f}s"
     assert r["b"] < 0.5, f"host B was stalled by host A's sleep: {r['b']:.3f}s"
+
+
+def test_custom_header_not_leaked_to_cross_origin_redirect(echo_server):
+    """Regression (#40): auth/custom headers must not be replayed to a
+    cross-origin redirect target."""
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    target = echo_server  # http://127.0.0.1:8941/check
+
+    class RedirectHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(302)
+            self.send_header("Location", target)
+            self.end_headers()
+
+        def log_message(self, *a):
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 8951), RedirectHandler)
+    srv.allow_reuse_address = True
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    try:
+        settings = DownloaderSettings(
+            rate_limit_ms=0, retries=0, allow_private_network=True,
+            auth=AuthSettings(type="header", name="X-Custom-Auth", value="SECRET"),
+        )
+
+        async def _run():
+            async with Downloader(settings) as dl:
+                return await dl.fetch_result("http://127.0.0.1:8951/start")
+
+        result = asyncio.run(_run())
+        body = json.loads(result.html)
+        assert body["x_custom"] is None, "custom auth header leaked to redirect target"
+        assert body["authorization"] is None
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def test_redirect_hop_robots_enforced(echo_server):
+    """Regression (#41): each redirect hop must consult the target origin's
+    robots.txt, not just the initial URL."""
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    class RedirectHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(302)
+            self.send_header("Location", "http://127.0.0.1:8952/page")
+            self.end_headers()
+
+        def log_message(self, *a):
+            pass
+
+    class DisallowHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/robots.txt":
+                body = b"User-agent: *\nDisallow: /\n"
+            else:
+                body = b"ok"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    a = HTTPServer(("127.0.0.1", 8951), RedirectHandler)
+    a.allow_reuse_address = True
+    b = HTTPServer(("127.0.0.1", 8952), DisallowHandler)
+    b.allow_reuse_address = True
+    for s in (a, b):
+        threading.Thread(target=s.serve_forever, daemon=True).start()
+    try:
+        settings = DownloaderSettings(
+            rate_limit_ms=0, retries=0, allow_private_network=True, respect_robots=True
+        )
+
+        async def _run():
+            async with Downloader(settings) as dl:
+                return await dl.fetch_result("http://127.0.0.1:8951/start")
+
+        with pytest.raises(RobotsDisallowed):
+            asyncio.run(_run())
+    finally:
+        a.shutdown()
+        a.server_close()
+        b.shutdown()
+        b.server_close()

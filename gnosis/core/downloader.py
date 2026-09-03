@@ -10,7 +10,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Optional
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
@@ -99,7 +99,6 @@ class Downloader:
                 "Accept-Language": "en-US,en;q=0.5",
             }
             # Custom headers and auth override/extend the defaults
-            headers.update(self.settings.request_headers())
             # The SSRF guard is enforced at the transport/connect layer (IP
             # pinning) so every request and every redirect hop is covered with
             # a single resolve-then-dial step; no separate validate-then-connect
@@ -107,7 +106,7 @@ class Downloader:
             transport = build_transport(self.settings.allow_private_network)
             self._client = httpx.AsyncClient(
                 timeout=httpx.Timeout(self.settings.timeout),
-                follow_redirects=True,
+                follow_redirects=False,
                 headers=headers,
                 transport=transport,
             )
@@ -157,37 +156,60 @@ class Downloader:
 
         client = await self._get_client()
         last_error: Optional[Exception] = None
+        sensitive = self.settings.request_headers()  # auth/custom: first hop only
+        max_redirects = 10
 
         for attempt in range(self.settings.retries + 1):
             try:
-                if not await self._robots.is_allowed(url):
-                    raise RobotsDisallowed(url)
-                await self._rate_limit(url)
+                current = url
+                chain: list[str] = []
+                original_netloc = urlparse(url).netloc
+                while True:
+                    if not await self._robots.is_allowed(current):
+                        raise RobotsDisallowed(current)
+                    await self._rate_limit(current)
+                    if not self.settings.allow_private_network:
+                        check_ip_literal(urlparse(current).hostname or "")
 
-                response = await client.get(url, headers=extra_headers or None)
-                response.raise_for_status()
+                    hop_headers: dict[str, str] = {}
+                    if urlparse(current).netloc == original_netloc:
+                        hop_headers.update(sensitive)
+                        if extra_headers:
+                            hop_headers.update(extra_headers)
 
-                return FetchResult(
-                    url=url,
-                    final_url=str(response.url),
-                    status_code=response.status_code,
-                    html=response.text,
-                    fetched_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    response_headers={k.lower(): v for k, v in response.headers.items()},
-                    raw_bytes=response.content,
-                    content_type=response.headers.get("content-type", ""),
-                    redirect_chain=[str(r.url) for r in response.history] + [str(response.url)],
-                )
+                    response = await client.get(current, headers=hop_headers or None)
+
+                    if response.is_redirect:
+                        location = response.headers.get("location")
+                        if not location:
+                            raise DownloadError(f"redirect without Location: {current}")
+                        chain.append(current)
+                        current = urljoin(current, location)
+                        if len(chain) >= max_redirects:
+                            raise DownloadError(f"too many redirects: {url}")
+                        continue
+
+                    response.raise_for_status()
+                    chain.append(str(response.url))
+                    return FetchResult(
+                        url=url,
+                        final_url=str(response.url),
+                        status_code=response.status_code,
+                        html=response.text,
+                        fetched_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        response_headers={k.lower(): v for k, v in response.headers.items()},
+                        raw_bytes=response.content,
+                        content_type=response.headers.get("content-type", ""),
+                        redirect_chain=chain,
+                    )
 
             except httpx.HTTPStatusError as e:
                 last_error = e
-                # Don't retry on client errors (4xx)
                 if 400 <= e.response.status_code < 500:
                     break
             except httpx.RequestError as e:
                 last_error = e
 
-            # Wait before retry (exponential backoff)
             if attempt < self.settings.retries:
                 wait_time = 2**attempt
                 await asyncio.sleep(wait_time)
