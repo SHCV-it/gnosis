@@ -32,6 +32,7 @@ from gnosis.core.downloader import Downloader, RobotsDisallowed
 from gnosis.core.export import export_records
 from gnosis.core.llms import fetch_sitemap_urls, render_llms_full, render_llms_txt
 from gnosis.core.network import PrivateNetworkBlocked
+from gnosis.core.plugins import PluginManager
 from gnosis.core.policy import PolicyEngine
 from gnosis.core.provenance import build_frontmatter, compute_bytes_hash, compute_content_hash, render_document
 from gnosis.core.render import ObscuraRenderer, RenderError
@@ -651,12 +652,15 @@ async def download_and_convert(
     converter = HTMLToMarkdownConverter(settings.converter, verbose=verbose)
     renderer = _build_renderer(settings)
     policy = PolicyEngine(settings.policies)
+    plugins = PluginManager(settings.plugins)
 
     if not quiet:
         console.print(f"[blue]📥[/blue] Downloading: {url}")
 
+    fetch_url, fetch_headers = plugins.pre_fetch(url, {})
     try:
-        fetch = await downloader.fetch_result(url)
+        fetch = await downloader.fetch_result(fetch_url, fetch_headers)
+        plugins.post_fetch(fetch)
     except RobotsDisallowed as e:
         console.print(f"[yellow]⚠[/yellow] {e}")
         _write_failed_data_card(settings, url, str(e))
@@ -676,6 +680,7 @@ async def download_and_convert(
     html = await _maybe_render(fetch, renderer, converter, settings, quiet)
     metadata = converter.extract_metadata(html)
     markdown = converter.convert(html, base_url=fetch.final_url)
+    markdown = plugins.post_process(markdown, metadata)
     metadata["retention_ratio"] = converter.stats.retention_ratio
     metadata["stripped_elements"] = converter.stats.stripped_elements
     if converter.stats.markdown_chars < 150:
@@ -808,6 +813,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     converter = HTMLToMarkdownConverter(settings.converter, verbose=verbose)
     crawler = Crawler(settings.crawler, downloader)
     policy = PolicyEngine(settings.policies)
+    plugins = PluginManager(settings.plugins)
     archiver = (
         Archiver(Path(settings.output.directory), user_agent=settings.downloader.user_agent)
         if settings.output.warc
@@ -839,6 +845,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
             if not quiet:
                 console.print(f"[blue]📥[/blue] Downloaded: {page_url}")
 
+            plugins.post_fetch(fetch)
             bytes_sha = compute_bytes_hash(fetch.raw_bytes)
             _filename = url_to_filename(page_url) + settings.output.extension
             if (
@@ -883,6 +890,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                 html = await _maybe_render(fetch, renderer, converter, settings, quiet)
                 metadata = converter.extract_metadata(html)
                 markdown = converter.convert(html, base_url=fetch.final_url)
+                markdown = plugins.post_process(markdown, metadata)
                 metadata["retention_ratio"] = converter.stats.retention_ratio
                 metadata["stripped_elements"] = converter.stats.stripped_elements
                 if converter.stats.markdown_chars < 150:

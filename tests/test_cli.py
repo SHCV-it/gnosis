@@ -322,6 +322,18 @@ class TestSinglePage:
         card = json.loads((tmp_path / "data-card.json").read_text())
         assert card["summary"]["pages"] == len(md_files)
 
+    def test_plugin_post_process_transforms_output(self, server, tmp_path):
+        plug = tmp_path / "plug.py"
+        plug.write_text(
+            "def post_process(markdown, metadata):\n    return markdown + '\\n<!-- plugin-injected -->'\n"
+        )
+        cfg = tmp_path / "cfg.yaml"
+        cfg.write_text(f"plugins:\n  - {plug}\n")
+        result = run_cli([f"{server}/page", "-o", str(tmp_path), "-f", "-q", "--config", str(cfg)])
+        assert result.exit_code == 0
+        content = next(tmp_path.glob("*.md")).read_text()
+        assert "<!-- plugin-injected -->" in content
+
     def test_empty_page_still_written(self, server, tmp_path):
         """Pages with minimal content should still be captured."""
         result = run_cli([f"{server}/empty", "-o", str(tmp_path), "-f", "-q"])

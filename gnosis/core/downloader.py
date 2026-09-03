@@ -137,7 +137,7 @@ class Downloader:
 
             self._last_request_times[key] = asyncio.get_running_loop().time()
 
-    async def fetch_result(self, url: str) -> FetchResult:
+    async def fetch_result(self, url: str, extra_headers: Optional[dict] = None) -> FetchResult:
         """
         Fetch a URL and return the full result with provenance metadata.
 
@@ -164,7 +164,7 @@ class Downloader:
                     raise RobotsDisallowed(url)
                 await self._rate_limit(url)
 
-                response = await client.get(url)
+                response = await client.get(url, headers=extra_headers or None)
                 response.raise_for_status()
 
                 return FetchResult(
