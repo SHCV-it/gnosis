@@ -32,6 +32,18 @@ def test_open_only_denies_noncommercial():
     assert engine.evaluate("https://x/a", {"license": "CC-BY 4.0"}).allowed
 
 
+def test_open_only_denies_canonical_cc_encodings():
+    """Regression (reviewer P1): NC/ND must be denied in spaced + URL encodings,
+    not only the hyphenated cc-by-nc token."""
+    engine = PolicyEngine(get_profile("open-only"))
+    assert not engine.evaluate("https://x/a", {"license": "CC BY-NC 4.0"}).allowed
+    assert not engine.evaluate(
+        "https://x/a", {"license": "https://creativecommons.org/licenses/by-nc/4.0/"}
+    ).allowed
+    assert not engine.evaluate("https://x/a", {"license": "CC BY-ND 4.0"}).allowed
+    assert engine.evaluate("https://x/a", {"license": "CC BY 4.0"}).allowed
+
+
 def test_unknown_profile_raises():
     with pytest.raises(ValueError):
         get_profile("nope")

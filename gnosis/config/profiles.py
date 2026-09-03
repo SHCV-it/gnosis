@@ -20,7 +20,7 @@ PROFILES: dict[str, list[dict]] = {
     "open-only": [
         {
             "name": "open-licenses-only",
-            "deny_if": {"license": ["All Rights Reserved", "proprietary", "cc-by-nc", "cc-by-nd"]},
+            "deny_if": {"license": ["All Rights Reserved", "proprietary", "by-nc", "by-nd"]},
             "reason": "license is not permissive/open",
         },
     ],
@@ -28,7 +28,9 @@ PROFILES: dict[str, list[dict]] = {
 
 
 def get_profile(name: str) -> list[dict]:
-    """Return the policy list for a named profile."""
+    """Return a copy of the policy list for a named profile."""
     if name not in PROFILES:
         raise ValueError(f"unknown profile: {name!r} (available: {', '.join(PROFILES)})")
-    return PROFILES[name]
+    import copy
+
+    return copy.deepcopy(PROFILES[name])

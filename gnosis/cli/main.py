@@ -20,7 +20,7 @@ from rich.console import Console
 
 from gnosis import __version__
 from gnosis.config import Settings, load_config
-from gnosis.config.profiles import PROFILES
+from gnosis.config.profiles import PROFILES, get_profile
 from gnosis.config.settings import AuthSettings, expand_env
 from gnosis.core.aitext import fetch_host_consent
 from gnosis.core.archive import Archiver
@@ -411,8 +411,8 @@ def cli(
         settings.output.frontmatter = False
     if frontmatter_extra:
         settings.output.frontmatter_extra.update(_parse_frontmatter_extras(frontmatter_extra))
-    if profile:
-        settings.policies = PROFILES[profile]
+    if profile and profile != "default":
+        settings.policies = get_profile(profile)
     if sign and no_frontmatter:
         console.print("[red]✗[/red] --sign requires frontmatter (cannot combine with --no-frontmatter)")
         sys.exit(1)
