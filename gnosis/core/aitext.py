@@ -50,8 +50,14 @@ def parse_ai_txt(text: str, user_agent: str = "Gnosis") -> dict[str, str]:
                 groups[current][key.strip().lower()] = value
 
     ua = user_agent.lower()
-    if ua in groups:
-        return dict(groups[ua])
+    # robots.txt product-token prefix matching: the longest group token that is a
+    # prefix of the crawler's UA wins; fall back to "*".
+    best = None
+    for group in groups:
+        if group != "*" and ua.startswith(group) and (best is None or len(group) > len(best)):
+            best = group
+    if best is not None:
+        return dict(groups[best])
     return dict(groups.get("*", {}))
 
 
