@@ -5,9 +5,10 @@ about what they actually enforce (literal matching, deny-overrides):
 
 - `default` — no policies.
 - `strict-optout` — blocks sites whose ai.txt says training/data is denied
-  (normalised: Deny/Disallow/no/opt-out) and pages whose `license` field
-  contains "All Rights Reserved". It does NOT attempt full license
-  classification — it matches a specific, documented set of literals.
+  (normalised: Deny/Disallow/no/opt-out), whose ai.txt `Disallow:` path covers
+  the page, or whose `license` field contains "All Rights Reserved". It does
+  NOT attempt full license classification — it matches a specific, documented
+  set of literals.
 - `open-only` — blocks licenses whose field contains "All Rights Reserved",
   "proprietary", "by-nc", or "by-nd" (non-open per the Open Definition).
 
@@ -29,6 +30,11 @@ PROFILES: dict[str, list[dict]] = {
             "name": "no-data-denied",
             "deny_if": {"ai_txt": {"data": "Deny"}},
             "reason": "site prohibits use of its content as data",
+        },
+        {
+            "name": "no-disallow",
+            "deny_if": {"ai_txt": {"disallow": True}},
+            "reason": "site disallows scraping",
         },
         {
             "name": "no-proprietary",

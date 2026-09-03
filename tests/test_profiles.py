@@ -66,3 +66,14 @@ def test_strict_optout_blocks_data_denied():
     """Regression (panel P1): Data: Deny must be blocked, not just Training."""
     engine = PolicyEngine(get_profile("strict-optout"))
     assert not engine.evaluate("https://x/a", {"ai_txt": {"data": "Deny"}}).allowed
+
+
+def test_strict_optout_blocks_disallow():
+    """Regression (#48): real ai.txt 'Disallow:' path opt-out must be enforced."""
+    engine = PolicyEngine(get_profile("strict-optout"))
+    assert not engine.evaluate("https://x/a", {"ai_txt": {"disallow": "/"}}).allowed
+    assert not engine.evaluate("https://x/private/a", {"ai_txt": {"disallow": "/private/"}}).allowed
+    assert engine.evaluate("https://x/private", {"ai_txt": {"disallow": "/private/"}}).allowed
+    assert engine.evaluate("https://x/public/a", {"ai_txt": {"disallow": "/private/"}}).allowed
+    # no disallow directive -> not blocked by the disallow rule
+    assert engine.evaluate("https://x/a", {}).allowed

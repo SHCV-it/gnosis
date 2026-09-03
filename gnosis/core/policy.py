@@ -9,8 +9,11 @@ explicit opt-out.
 
 Within a single `deny_if` / `allow_if`, the listed conditions are **OR**-ed: a
 match on ANY one of them (license substring, path glob, ai.txt directive) is
-enough to trigger the rule. Every explicit decision is recorded in the
-provenance record + data card.
+enough to trigger the rule. `ai_txt.disallow` is special: it matches the URL
+path against the SITE's ai.txt `Disallow:` directive (robots.txt-style — "/"
+disallows all, a prefix disallows that subtree); the rule value is just a
+trigger. Every explicit decision is recorded in the provenance record + data
+card.
 """
 
 from __future__ import annotations
@@ -60,9 +63,19 @@ def _matches(cond: dict, url: str, metadata: dict) -> bool:
         ai = metadata.get("ai_txt") or {}
         if isinstance(ai, dict):
             for key, value in cond["ai_txt"].items():
-                got = str(ai.get(key) or "").lower()
-                if got and got == str(value).lower():
-                    return True
+                if key == "disallow":
+                    # deny when the SITE's disallow directive covers the page path
+                    site_disallow = ai.get("disallow")
+                    if site_disallow:
+                        path = urlparse(url).path
+                        patterns = [site_disallow] if isinstance(site_disallow, str) else site_disallow
+                        for pat in patterns:
+                            if pat and (pat == "/" or path.startswith(pat)):
+                                return True
+                else:
+                    got = str(ai.get(key) or "").lower()
+                    if got and got == str(value).lower():
+                        return True
     return False
 
 
