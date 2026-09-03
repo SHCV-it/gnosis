@@ -59,10 +59,10 @@ class Crawler:
         Returns:
             Tuple of (total_count, discovered_urls, hit_max_limit)
         """
+        parsed_original = urlparse(start_url)
+        base_domain = parsed_original.netloc
+        base_path = self._get_base_path(parsed_original.path)
         start_url = self._normalize_url(start_url)
-        parsed_start = urlparse(start_url)
-        base_domain = parsed_start.netloc
-        base_path = self._get_base_path(parsed_start.path)
 
         visited: Set[str] = set()
         queue: deque[Tuple[str, int]] = deque()
@@ -116,10 +116,10 @@ class Crawler:
             Tuples of (url, FetchResult) carrying HTML and provenance
             metadata (final URL, status code, fetch timestamp, headers).
         """
+        parsed_original = urlparse(start_url)
+        base_domain = parsed_original.netloc
+        base_path = self._get_base_path(parsed_original.path)
         start_url = self._normalize_url(start_url)
-        parsed_start = urlparse(start_url)
-        base_domain = parsed_start.netloc
-        base_path = self._get_base_path(parsed_start.path)
 
         visited: Set[str] = set()
         queue: deque[Tuple[str, int]] = deque()
@@ -176,10 +176,12 @@ class Crawler:
         """
         Extract the base path prefix for crawl scope.
 
-        If the last segment looks like a file (contains a dot), returns its
-        parent directory. Otherwise returns the path as-is.
+        A trailing slash means the URL is a directory (even if the last segment
+        contains a dot, e.g. /v2.0/). Otherwise a dotted last segment is treated
+        as a file and its parent directory is used.
         """
-        path = path.rstrip("/")
+        if path.endswith("/"):
+            return path.rstrip("/")
         last_segment = posixpath.basename(path)
         if "." in last_segment:
             return posixpath.dirname(path)
@@ -213,11 +215,16 @@ class Crawler:
             if not href or href == "#" or href.startswith(("javascript:", "mailto:", "tel:")):
                 continue
 
-            base = page_url
-            if not base.endswith("/"):
-                last_segment = posixpath.basename(urlparse(base).path)
-                if "." not in last_segment:
-                    base += "/"
+            parsed_page = urlparse(page_url)
+            path = parsed_page.path
+            if path and not path.endswith("/"):
+                last_segment = posixpath.basename(path)
+                # append "/" when the last segment is extensionless OR the page
+                # IS the scoped directory root (a dotted dir like /v2.0 that was
+                # normalized to lose its trailing slash).
+                if "." not in last_segment or path == base_path:
+                    path += "/"
+            base = urlunparse((parsed_page.scheme, parsed_page.netloc, path, "", "", ""))
             absolute_url = urljoin(base, href)
 
             normalized = self._normalize_url(absolute_url)

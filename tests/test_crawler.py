@@ -45,6 +45,17 @@ class TestRelativeLinkResolution:
         )
         assert "https://docs.example.com/guide/sub/page.html" in links
 
+    def test_query_string_does_not_break_directory_resolution(self):
+        """Regression (#42): a query string must not cause relative links to
+        resolve to the parent directory."""
+        links = extract(
+            '<a href="quickstart.html">q</a>',
+            "https://docs.example.com/en/latest?lang=en",
+            "docs.example.com",
+            "/en/latest",
+        )
+        assert "https://docs.example.com/en/latest/quickstart.html" in links
+
 
 class TestScopeFiltering:
     def test_external_domain_excluded(self):
@@ -113,3 +124,24 @@ def test_crawl_no_skip_fetches():
 
     urls, fetched = asyncio.run(_run())
     assert fetched == ["http://x.test/"]
+
+
+def test_get_base_path_dotted_directory():
+    """Regression (#43): a versioned directory root (/v2.0/) is a directory,
+    not a file, so its base path is /v2.0 (not /)."""
+    crawler = Crawler(CrawlerSettings())
+    assert crawler._get_base_path("/v2.0/") == "/v2.0"
+    assert crawler._get_base_path("/guide/intro.html") == "/guide"
+    assert crawler._get_base_path("/en/latest") == "/en/latest"
+
+
+def test_dotted_directory_url_resolves_beneath():
+    """Regression (reviewer P1): a dotted directory root (/v2.0) that lost its
+    trailing slash during normalize must still resolve children beneath it."""
+    links = extract(
+        '<a href="quickstart.html">q</a>',
+        "https://docs.example.com/v2.0",  # normalized (slash stripped)
+        "docs.example.com",
+        "/v2.0",  # base_path = the dotted directory
+    )
+    assert "https://docs.example.com/v2.0/quickstart.html" in links
