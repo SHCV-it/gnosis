@@ -219,7 +219,10 @@ class Crawler:
             path = parsed_page.path
             if path and not path.endswith("/"):
                 last_segment = posixpath.basename(path)
-                if "." not in last_segment:
+                # append "/" when the last segment is extensionless OR the page
+                # IS the scoped directory root (a dotted dir like /v2.0 that was
+                # normalized to lose its trailing slash).
+                if "." not in last_segment or path == base_path:
                     path += "/"
             base = urlunparse((parsed_page.scheme, parsed_page.netloc, path, "", "", ""))
             absolute_url = urljoin(base, href)

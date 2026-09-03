@@ -133,3 +133,15 @@ def test_get_base_path_dotted_directory():
     assert crawler._get_base_path("/v2.0/") == "/v2.0"
     assert crawler._get_base_path("/guide/intro.html") == "/guide"
     assert crawler._get_base_path("/en/latest") == "/en/latest"
+
+
+def test_dotted_directory_url_resolves_beneath():
+    """Regression (reviewer P1): a dotted directory root (/v2.0) that lost its
+    trailing slash during normalize must still resolve children beneath it."""
+    links = extract(
+        '<a href="quickstart.html">q</a>',
+        "https://docs.example.com/v2.0",  # normalized (slash stripped)
+        "docs.example.com",
+        "/v2.0",  # base_path = the dotted directory
+    )
+    assert "https://docs.example.com/v2.0/quickstart.html" in links
