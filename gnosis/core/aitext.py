@@ -89,8 +89,9 @@ def summarize_ai_txt(directives: dict[str, str]) -> dict[str, str]:
 async def fetch_host_consent(url: str, downloader) -> dict:
     """Fetch ai.txt + llms.txt for a host; return `{ai_txt?, llms_txt?}` (cached).
 
-    Transient fetch failures are NOT cached, so a one-off error on one page does
-    not suppress consent discovery for later pages of the same host.
+    Results are cached per (scheme, host) for `_CACHE_TTL_SECONDS`. A failed
+    probe (absent, 404, or transient error) records nothing for that file, and
+    the (possibly empty) result is cached for the TTL duration.
     """
     parsed = urlparse(url)
     host = parsed.netloc

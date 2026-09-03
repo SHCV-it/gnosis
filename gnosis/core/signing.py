@@ -12,11 +12,31 @@ nor ANY provenance field changed after signing.
 from __future__ import annotations
 
 import base64
+import collections.abc as _abc
 import hashlib
 import json
 from datetime import UTC, date, datetime
 
 import yaml
+from yaml.constructor import ConstructorError
+
+
+class _UniqueKeyLoader(yaml.SafeLoader):
+    """SafeLoader that rejects duplicate mapping keys (last-wins is silent)."""
+
+    def construct_mapping(self, node, deep=False):
+        mapping = {}
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if not isinstance(key, _abc.Hashable):
+                raise ConstructorError(
+                    "while constructing a mapping", node.start_mark,
+                    "found unhashable key", key_node.start_mark,
+                )
+            if key in mapping:
+                raise ValueError(f"duplicate frontmatter key: {key}")
+            mapping[key] = self.construct_object(value_node, deep=deep)
+        return mapping
 
 # Fields excluded from the canonical manifest (they ARE the signature block).
 _SIGNATURE_FIELDS = frozenset({"signature", "public_key", "manifest_sha256"})
@@ -151,7 +171,7 @@ def split_frontmatter(document: str) -> tuple[dict, str]:
             break
     if end is None:
         return {}, document
-    metadata = yaml.safe_load("\n".join(lines[1:end])) or {}
+    metadata = yaml.load("\n".join(lines[1:end]), Loader=_UniqueKeyLoader) or {}
     if not isinstance(metadata, dict):
         return {}, document
     body = "\n".join(lines[end + 1 :]).lstrip("\n")
@@ -192,8 +212,8 @@ def verify_document(
     """
     try:
         metadata, markdown = split_frontmatter(document)
-    except yaml.YAMLError:
-        return False, "signature INVALID — malformed frontmatter"
+    except (yaml.YAMLError, ValueError) as exc:
+        return False, f"signature INVALID — malformed frontmatter: {exc}"
     signature = metadata.get("signature")
     public_key = metadata.get("public_key")
     if not signature or not public_key:
