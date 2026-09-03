@@ -102,6 +102,7 @@ class Crawler:
         start_url: str,
         resume_frontier: list | None = None,
         resume_visited: set[str] | None = None,
+        known_validators: dict | None = None,
     ) -> AsyncIterator[Tuple[str, FetchResult]]:
         """
         Crawl a website starting from the given URL.
@@ -134,6 +135,7 @@ class Crawler:
             visited = set()
             queue = deque([(start_url, 0)])
 
+        self._known_validators = known_validators or {}
         concurrency = max(1, self.settings.concurrent_requests)
         pages_yielded = 0
         self.frontier = [[u, d] for (u, d) in queue]
@@ -158,10 +160,16 @@ class Crawler:
 
             # Fetch the batch in parallel; exceptions are caught per-page
             async def _fetch(u: str):
+                headers: dict[str, str] = {}
                 if self._pre_fetch is not None:
-                    new_url, headers = self._pre_fetch(u, self.downloader.effective_headers())
-                    return await self.downloader.fetch_result(new_url, headers)
-                return await self.downloader.fetch_result(u)
+                    u, headers = self._pre_fetch(u, self.downloader.effective_headers())
+                validators = self._known_validators.get(u)
+                if validators:
+                    if validators.get("etag"):
+                        headers["If-None-Match"] = validators["etag"]
+                    if validators.get("last_modified"):
+                        headers["If-Modified-Since"] = validators["last_modified"]
+                return await self.downloader.fetch_result(u, headers or None)
 
             tasks = [_fetch(url) for url, _ in batch]
             results = await asyncio.gather(*tasks, return_exceptions=True)

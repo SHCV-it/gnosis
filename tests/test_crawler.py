@@ -103,7 +103,7 @@ class _FakeDownloader:
     def __init__(self):
         self.fetched = []
 
-    async def fetch_result(self, url):
+    async def fetch_result(self, url, extra_headers=None):
         self.fetched.append(url)
         return FetchResult(
             url=url,
@@ -145,3 +145,31 @@ def test_dotted_directory_url_resolves_beneath():
         "/v2.0",  # base_path = the dotted directory
     )
     assert "https://docs.example.com/v2.0/quickstart.html" in links
+
+
+def test_conditional_fetch_sends_validators():
+    """Regression (#34): known URLs are re-fetched with If-None-Match /
+    If-Modified-Since so unchanged pages can return 304."""
+
+    class DL(_FakeDownloader):
+        def __init__(self):
+            super().__init__()
+            self.extra = []
+
+        async def fetch_result(self, url, extra_headers=None):
+            self.extra.append(extra_headers)
+            self.fetched.append(url)
+            return FetchResult(
+                url=url, final_url=url, status_code=200, html="",
+                fetched_at="2026-01-01T00:00:00Z", raw_bytes=b"<html></html>",
+            )
+
+    async def _run():
+        dl = DL()
+        crawler = Crawler(CrawlerSettings(max_depth=0), dl)
+        known = {"http://x.test/": {"etag": '"abc"', "last_modified": "Wed, 01 Jan 2026"}}
+        [u async for u, _ in crawler.crawl("http://x.test/", known_validators=known)]
+        return dl.extra
+
+    extra = asyncio.run(_run())
+    assert extra[0] == {"If-None-Match": '"abc"', "If-Modified-Since": "Wed, 01 Jan 2026"}

@@ -843,6 +843,10 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     duplicate_count = 0
     failed: list[str] = []
     seen_hashes, manifest, frontier, visited = load_checkpoint(output_dir)
+    known_validators = {
+        m["url"]: {"etag": m.get("etag"), "last_modified": m.get("last_modified")}
+        for m in manifest
+    }
     known_bytes = {m["url"]: m.get("bytes_sha256") for m in manifest if m.get("bytes_sha256")}
     known_manifest = {m["url"]: m for m in manifest}
     unchanged_count = 0
@@ -850,13 +854,55 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     export_list: list[dict] = []
 
     try:
-        async for page_url, fetch in crawler.crawl(url, resume_frontier=frontier, resume_visited=visited):
+        async for page_url, fetch in crawler.crawl(
+            url,
+            resume_frontier=frontier,
+            resume_visited=visited,
+            known_validators=known_validators,
+        ):
             if not quiet:
                 console.print(f"[blue]📥[/blue] Downloaded: {page_url}")
 
             plugins.post_fetch(fetch)
-            bytes_sha = compute_bytes_hash(fetch.raw_bytes)
             _filename = url_to_filename(page_url) + settings.output.extension
+            if fetch.status_code == 304:
+                # server confirmed unchanged: skip without re-processing
+                entry = known_manifest.get(page_url) or {}
+                body = (
+                    _read_md_body(output_dir / _filename)
+                    if (output_dir / _filename).exists()
+                    else ""
+                )
+                page_records.append(
+                    {
+                        "url": page_url,
+                        "status_code": entry.get("status_code"),
+                        "raw_bytes": 0,
+                        "markdown_chars": len(body),
+                        "content_hash": entry.get("content_hash"),
+                        "bytes_sha256": entry.get("bytes_sha256"),
+                        "retention_ratio": None,
+                        "stripped_elements": None,
+                        "low_content": False,
+                        "license": None,
+                    }
+                )
+                if fmt:
+                    export_list.append(
+                        {
+                            "url": page_url,
+                            "markdown": body,
+                            "content_hash": entry.get("content_hash"),
+                            "bytes_sha256": entry.get("bytes_sha256"),
+                            "status_code": entry.get("status_code"),
+                            "title": entry.get("title") or "",
+                        }
+                    )
+                unchanged_count += 1
+                if not quiet:
+                    console.print(f"[dim]⏭  Unchanged (304): {page_url}[/dim]")
+                continue
+            bytes_sha = compute_bytes_hash(fetch.raw_bytes)
             if (
                 known_bytes.get(page_url) == bytes_sha
                 and (output_dir / _filename).exists()
@@ -977,6 +1023,8 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                     "status_code": fetch.status_code,
                     "title": metadata.get("title") or "",
                     "bytes_sha256": bytes_sha,
+                    "etag": fetch.response_headers.get("etag"),
+                    "last_modified": fetch.response_headers.get("last-modified"),
                 }
             )
             save_checkpoint(output_dir, seen_hashes, manifest, frontier=crawler.frontier, visited=crawler.visited_urls)
