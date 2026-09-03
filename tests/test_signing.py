@@ -239,3 +239,27 @@ def test_duplicate_keys_rejected(keypair):
     import pytest
     with pytest.raises(ValueError):
         sign_document(doc, private_pem)
+
+
+def test_nested_duplicate_keys_rejected(keypair):
+    """Duplicate keys at any nesting depth are caught (not just top-level)."""
+    private_pem, public_b64 = keypair
+    body_hash = hashlib.sha256(BODY.encode("utf-8")).hexdigest()
+    doc = (
+        "---\nurl: https://a\nmeta:\n  x: 1\n  x: 2\n"
+        f"content_hash: {body_hash}\nbytes_sha256: def\nstatus_code: 200\n"
+        "fetched_at: '2026-09-03T00:00:00Z'\ngenerator: gnosis/2.0.0\n---\n\n" + BODY
+    )
+    ok, reason = verify_document(doc, expected_public_key=public_b64)
+    assert not ok
+    assert "duplicate" in reason.lower()
+
+
+def test_unhashable_key_rejected_cleanly():
+    """An unhashable mapping key must be rejected cleanly, not raise a traceback."""
+    doc = (
+        "---\n? [a, b]\n: v\ncontent_hash: abc\nbytes_sha256: def\nstatus_code: 200\n"
+        "fetched_at: '2026-09-03T00:00:00Z'\ngenerator: gnosis/2.0.0\n---\n\n# Body\n"
+    )
+    ok, reason = verify_document(doc)
+    assert not ok

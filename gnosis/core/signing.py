@@ -12,11 +12,13 @@ nor ANY provenance field changed after signing.
 from __future__ import annotations
 
 import base64
+import collections.abc as _abc
 import hashlib
 import json
 from datetime import UTC, date, datetime
 
 import yaml
+from yaml.constructor import ConstructorError
 
 
 class _UniqueKeyLoader(yaml.SafeLoader):
@@ -26,6 +28,11 @@ class _UniqueKeyLoader(yaml.SafeLoader):
         mapping = {}
         for key_node, value_node in node.value:
             key = self.construct_object(key_node, deep=deep)
+            if not isinstance(key, _abc.Hashable):
+                raise ConstructorError(
+                    "while constructing a mapping", node.start_mark,
+                    "found unhashable key", key_node.start_mark,
+                )
             if key in mapping:
                 raise ValueError(f"duplicate frontmatter key: {key}")
             mapping[key] = self.construct_object(value_node, deep=deep)
