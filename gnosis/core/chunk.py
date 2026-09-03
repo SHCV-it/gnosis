@@ -115,7 +115,8 @@ def _split_oversized(
         if cur and cur_tokens + ptokens > max_tokens:
             content = "".join(cur)
             windows.append((content, cur_start, cur_end, cur_tokens))
-            tail = _token_tail(content, overlap_tokens)
+            # clamp the overlap so tail + next piece stays within max_tokens
+            tail = _token_tail(content, min(overlap_tokens, max(0, max_tokens - ptokens)))
             cur = [tail] if tail else []
             cur_start = cur_end - len(tail)
             cur_end = cur_start + len(tail)

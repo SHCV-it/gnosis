@@ -150,3 +150,14 @@ def test_oversized_flush_resets_token_count():
     chunks = chunk_markdown(md, max_tokens=128, overlap_tokens=0)
     for c in chunks:
         assert c.token_count == estimate_tokens(c.content), c.token_count
+
+
+def test_overlap_flush_stays_in_budget():
+    """Regression (reviewer P1): after carrying the overlap tail, the next
+    window must still respect max_tokens even for a large incoming piece."""
+    md = "\u6c49" * 50 + "\u3002 " + "\u6c49" * 50
+    chunks = chunk_markdown(md, max_tokens=64, overlap_tokens=16)
+    assert chunks
+    for c in chunks:
+        assert c.token_count <= 64, c.token_count
+        assert md[c.start:c.end] == c.content
