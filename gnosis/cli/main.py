@@ -931,6 +931,9 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                 if archiver is not None:
                     archiver.archive(fetch, compute_bytes_hash(fetch.raw_bytes))
                 markdown = plugins.post_process(markdown, metadata)
+                # content_hash must reflect the FINAL (post-plugin) body so the
+                # crawl manifest matches each file's frontmatter hash.
+                content_hash = compute_content_hash(markdown)
                 document = _render_output(fetch, markdown, metadata, settings)
             except Exception as e:
                 if not quiet:
