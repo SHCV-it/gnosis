@@ -276,3 +276,39 @@ def test_transient_consent_failure_not_cached():
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+def test_absence_404_is_cached():
+    """Regression (reviewer P1): a definitive 404 must be cached as absence, so
+    later pages do not re-probe a host that has no consent files."""
+    from http.server import HTTPServer
+
+    hits = {"n": 0}
+
+    class NotFound(_Handler):
+        def do_GET(self):
+            hits["n"] += 1
+            body = b"not found"
+            self.send_response(404)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+    srv = HTTPServer(("127.0.0.1", 8954), NotFound)
+    srv.allow_reuse_address = True
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    try:
+        async def _run():
+            settings = DownloaderSettings(
+                rate_limit_ms=0, retries=0, allow_private_network=True, respect_robots=False
+            )
+            async with Downloader(settings) as dl:
+                return await fetch_host_consent("http://127.0.0.1:8954/page", dl)
+
+        assert asyncio.run(_run()) == {}
+        assert asyncio.run(_run()) == {}  # cached: no re-probe
+        assert hits["n"] == 2  # ai.txt + llms.txt probed once, then cached
+    finally:
+        srv.shutdown()
+        srv.server_close()
