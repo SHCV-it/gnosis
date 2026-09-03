@@ -65,8 +65,7 @@ class Crawler:
         start_url = self._normalize_url(start_url)
 
         visited: Set[str] = set()
-        queue: deque[Tuple[str, int]] = deque()
-        queue.append((start_url, 0))
+        queue: deque[Tuple[str, int]] = deque([(start_url, 0)])
 
         discovered_urls: list[str] = []
         hit_max_limit = False
@@ -98,7 +97,12 @@ class Crawler:
 
         return len(discovered_urls), discovered_urls, hit_max_limit
 
-    async def crawl(self, start_url: str) -> AsyncIterator[Tuple[str, FetchResult]]:
+    async def crawl(
+        self,
+        start_url: str,
+        resume_frontier: list | None = None,
+        resume_visited: set[str] | None = None,
+    ) -> AsyncIterator[Tuple[str, FetchResult]]:
         """
         Crawl a website starting from the given URL.
 
@@ -121,12 +125,19 @@ class Crawler:
         base_path = self._get_base_path(parsed_original.path)
         start_url = self._normalize_url(start_url)
 
-        visited: Set[str] = set()
-        queue: deque[Tuple[str, int]] = deque()
-        queue.append((start_url, 0))
+        if resume_frontier:
+            # partial crawl: resume from the pending frontier, keeping visited
+            visited = set(resume_visited or [])
+            queue = deque((u, int(d)) for u, d in resume_frontier)
+        else:
+            # fresh (or completed) crawl: start over from the root
+            visited = set()
+            queue = deque([(start_url, 0)])
 
         concurrency = max(1, self.settings.concurrent_requests)
         pages_yielded = 0
+        self.frontier = [[u, d] for (u, d) in queue]
+        self.visited_urls = visited
 
         while queue and pages_yielded < self.settings.max_pages:
             # Collect a batch of up to concurrency URLs to fetch in parallel
@@ -161,6 +172,8 @@ class Crawler:
                     continue
 
                 pages_yielded += 1
+                self.frontier = [[u, d] for (u, d) in queue]
+                self.visited_urls = visited
                 yield url, result
 
                 # Extract links for the next depth level

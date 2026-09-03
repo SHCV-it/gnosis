@@ -512,3 +512,20 @@ def test_crawl_plugin_manifest_hash_matches_file(tmp_path, server):
     for m in manifest:
         meta = frontmatter.loads((tmp_path / m["file"]).read_text()).metadata
         assert m["content_hash"] == meta["content_hash"]
+
+
+def test_resume_grows_past_max_pages(tmp_path, server):
+    """Regression (#45): a crawl capped at max_pages must persist its frontier,
+    and a resume must reach the remaining pages instead of re-crawling the same
+    first N pages."""
+    cfg = tmp_path / "cfg.yaml"
+    cfg.write_text("crawler:\n  max_pages: 2\n")
+
+    r1 = run_cli([f"{server}/hub", "-o", str(tmp_path), "-f", "-q", "--all", "--config", str(cfg)])
+    assert r1.exit_code == 0
+    cp = json.loads((tmp_path / ".gnosis-checkpoint.json").read_text())
+    assert len(cp["frontier"]) >= 1, "frontier must persist pending pages"
+
+    r2 = run_cli([f"{server}/hub", "-o", str(tmp_path), "-f", "-q", "--all", "--config", str(cfg)])
+    assert r2.exit_code == 0
+    assert len(list(tmp_path.glob("*.md"))) == 3  # hub + hub/a + hub/b

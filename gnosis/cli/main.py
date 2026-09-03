@@ -842,7 +842,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     skipped_count = 0
     duplicate_count = 0
     failed: list[str] = []
-    seen_hashes, manifest = load_checkpoint(output_dir)
+    seen_hashes, manifest, frontier, visited = load_checkpoint(output_dir)
     known_bytes = {m["url"]: m.get("bytes_sha256") for m in manifest if m.get("bytes_sha256")}
     known_manifest = {m["url"]: m for m in manifest}
     unchanged_count = 0
@@ -850,7 +850,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     export_list: list[dict] = []
 
     try:
-        async for page_url, fetch in crawler.crawl(url):
+        async for page_url, fetch in crawler.crawl(url, resume_frontier=frontier, resume_visited=visited):
             if not quiet:
                 console.print(f"[blue]📥[/blue] Downloaded: {page_url}")
 
@@ -979,7 +979,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                     "bytes_sha256": bytes_sha,
                 }
             )
-            save_checkpoint(output_dir, seen_hashes, manifest)
+            save_checkpoint(output_dir, seen_hashes, manifest, frontier=crawler.frontier, visited=crawler.visited_urls)
 
             if not quiet:
                 console.print(f"[green]✓[/green] Saved: {output_path}")
