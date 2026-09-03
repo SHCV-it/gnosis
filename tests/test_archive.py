@@ -124,3 +124,28 @@ def test_warc_appends_across_reopen(tmp_path):
     a2.close()
     types = [r.rec_type for r in _records(tmp_path / "archive.warc.gz")]
     assert types == ["warcinfo", "request", "response", "request", "response"]
+
+
+def test_warc_strips_url_credentials(tmp_path):
+    """Regression (#67): credentials embedded in the URL must not be persisted
+    into the WARC request record or Host header."""
+    fetch = FetchResult(
+        url="http://user:pass@example.com/page",
+        final_url="http://example.com/page",
+        status_code=200,
+        html=RAW.decode(),
+        fetched_at="2026-01-01T00:00:00Z",
+        response_headers={"content-type": "text/html"},
+        raw_bytes=RAW,
+    )
+    bs = compute_bytes_hash(fetch.raw_bytes)
+    archiver = Archiver(tmp_path)
+    archiver.archive(fetch, bs)
+    archiver.close()
+    with open(tmp_path / "archive.warc.gz", "rb") as f:
+        for r in ArchiveIterator(f):
+            uri = r.rec_headers.get_header("WARC-Target-URI") or ""
+            assert "user:pass" not in uri
+            if r.http_headers:
+                host = r.http_headers.get_header("Host") or ""
+                assert "user:pass" not in host

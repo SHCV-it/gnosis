@@ -10,7 +10,7 @@ and is replayable/auditable with standard tooling (warcio, pywb, Common Crawl).
 import io
 from http.client import responses as _HTTP_REASONS
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 from gnosis import __version__
 from gnosis.core.downloader import FetchResult
@@ -80,16 +80,21 @@ class Archiver:
         path = parsed.path or "/"
         if parsed.query:
             path += "?" + parsed.query
+        # strip userinfo so credentials are never persisted into the WARC
+        host = parsed.hostname or ""
+        if parsed.port:
+            host += f":{parsed.port}"
         headers = [
-            ("Host", parsed.netloc),
+            ("Host", host),
             ("User-Agent", self.user_agent),
             ("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
         ]
         http_headers = self._StatusAndHeaders(
             f"GET {path} HTTP/1.1", headers, protocol="HTTP/1.1"
         )
+        safe_uri = urlunparse((parsed.scheme, host, parsed.path, parsed.params, parsed.query, ""))
         record = writer.create_warc_record(
-            fetch.url, "request", http_headers=http_headers
+            safe_uri, "request", http_headers=http_headers
         )
         writer.write_record(record)
 
