@@ -219,3 +219,23 @@ def test_datetime_canonicalized_to_z():
     assert _json_safe(datetime(2026, 9, 3, 0, 0, tzinfo=UTC)) == "2026-09-03T00:00:00Z"
     assert _json_safe(datetime(2026, 9, 3, 0, 0)) == "2026-09-03T00:00:00Z"  # naive -> UTC
     assert _json_safe(date(2026, 9, 3)) == "2026-09-03"
+
+
+def test_duplicate_keys_rejected(keypair):
+    """Regression (#33): a document with duplicate frontmatter keys must be
+    rejected, not silently resolved last-wins before signing."""
+    private_pem, public_b64 = keypair
+    body_hash = hashlib.sha256(BODY.encode("utf-8")).hexdigest()
+    doc = (
+        "---\nurl: https://a\nurl: https://b\n"
+        f"content_hash: {body_hash}\nbytes_sha256: def\nstatus_code: 200\n"
+        "fetched_at: '2026-09-03T00:00:00Z'\ngenerator: gnosis/2.0.0\n---\n\n" + BODY
+    )
+    # verify rejects with a clear duplicate-key error
+    ok, reason = verify_document(doc, expected_public_key=public_b64)
+    assert not ok
+    assert "duplicate" in reason.lower()
+    # signing a duplicate-key doc also fails loudly
+    import pytest
+    with pytest.raises(ValueError):
+        sign_document(doc, private_pem)

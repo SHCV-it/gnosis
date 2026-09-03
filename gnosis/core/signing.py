@@ -18,6 +18,19 @@ from datetime import UTC, date, datetime
 
 import yaml
 
+
+class _UniqueKeyLoader(yaml.SafeLoader):
+    """SafeLoader that rejects duplicate mapping keys (last-wins is silent)."""
+
+    def construct_mapping(self, node, deep=False):
+        mapping = {}
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in mapping:
+                raise ValueError(f"duplicate frontmatter key: {key}")
+            mapping[key] = self.construct_object(value_node, deep=deep)
+        return mapping
+
 # Fields excluded from the canonical manifest (they ARE the signature block).
 _SIGNATURE_FIELDS = frozenset({"signature", "public_key", "manifest_sha256"})
 # Fields stripped when RE-signing (superset: signed_at is signed content but the
@@ -151,7 +164,7 @@ def split_frontmatter(document: str) -> tuple[dict, str]:
             break
     if end is None:
         return {}, document
-    metadata = yaml.safe_load("\n".join(lines[1:end])) or {}
+    metadata = yaml.load("\n".join(lines[1:end]), Loader=_UniqueKeyLoader) or {}
     if not isinstance(metadata, dict):
         return {}, document
     body = "\n".join(lines[end + 1 :]).lstrip("\n")
@@ -192,8 +205,8 @@ def verify_document(
     """
     try:
         metadata, markdown = split_frontmatter(document)
-    except yaml.YAMLError:
-        return False, "signature INVALID — malformed frontmatter"
+    except (yaml.YAMLError, ValueError) as exc:
+        return False, f"signature INVALID — malformed frontmatter: {exc}"
     signature = metadata.get("signature")
     public_key = metadata.get("public_key")
     if not signature or not public_key:
