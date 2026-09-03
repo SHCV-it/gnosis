@@ -40,7 +40,8 @@ def parse_ai_txt(text: str, user_agent: str = "Gnosis") -> dict[str, str]:
         if not line or line.startswith("#"):
             continue
         if line.lower().startswith("user-agent:"):
-            current = line.partition(":")[2].strip().lower()
+            ua_group = line.partition(":")[2].strip().lower()
+            current = ua_group or "*"
             groups.setdefault(current, {})
             continue
         if ":" in line:
@@ -50,11 +51,17 @@ def parse_ai_txt(text: str, user_agent: str = "Gnosis") -> dict[str, str]:
                 groups[current][key.strip().lower()] = value
 
     ua = user_agent.lower()
-    # robots.txt product-token prefix matching: the longest group token that is a
-    # prefix of the crawler's UA wins; fall back to "*".
+
+    def _matches(group: str) -> bool:
+        # product-token prefix with a token boundary, so "g" does NOT match
+        # "gnosis/2.0" but "gnosis" does and "gnosis/2.0" matches the full UA.
+        return ua == group or ua.startswith(group + "/") or ua.startswith(group + " ")
+
+    # robots.txt product-token prefix matching: the longest matching group wins;
+    # fall back to "*".
     best = None
     for group in groups:
-        if group != "*" and ua.startswith(group) and (best is None or len(group) > len(best)):
+        if group and group != "*" and _matches(group) and (best is None or len(group) > len(best)):
             best = group
     if best is not None:
         return dict(groups[best])
