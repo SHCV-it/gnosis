@@ -215,7 +215,11 @@ class HTMLToMarkdownConverter:
             for anchor in heading.find_all("a"):
                 classes = {str(c).lower() for c in (anchor.get("class") or [])}
                 href = str(anchor.get("href", ""))
-                if classes & _HEADING_ANCHOR_CLASSES or href.startswith("#"):
+                text = anchor.get_text().strip()
+                is_permalink = bool(classes & _HEADING_ANCHOR_CLASSES) or (
+                    href.startswith("#") and text in ("", "#", "¶", "&para;")
+                )
+                if is_permalink:
                     self.stats.stripped_elements += 1
                     anchor.decompose()
 
@@ -303,9 +307,19 @@ class HTMLToMarkdownConverter:
 
         for table in tables:
             rows = table.find_all("tr")
-            if len(rows) == 1:
-                sig = first_row_signature(table)
-                if sig and sig in real_signatures:
+            if len(rows) != 1:
+                continue
+            sig = first_row_signature(table)
+            if not sig or sig not in real_signatures:
+                continue
+            cells = table.find_all(["th", "td"])
+            # a shadow clone is a header-only (<th>) single-row table inside a
+            # "sticky" wrapper whose header matches a real table's header
+            if cells and all(c.name == "th" for c in cells):
+                wrapper = table.find_parent(
+                    class_=lambda c: c and "sticky" in str(c).lower()
+                )
+                if wrapper is not None:
                     table.decompose()
 
     def _find_content(self, soup: BeautifulSoup):
@@ -543,7 +557,10 @@ class HTMLToMarkdownConverter:
         # Ordered lists
         if tag_name == "ol":
             items = []
-            start = int(element.get("start", 1))
+            try:
+                start = int(element.get("start", 1))
+            except (TypeError, ValueError):
+                start = 1
             for i, li in enumerate(element.find_all("li", recursive=False)):
                 text = self._convert_children(li, base_url).strip()
                 if text:
