@@ -78,3 +78,13 @@ def test_build_data_card_empty():
     assert card["summary"]["pages"] == 0
     assert card["summary"]["retention_ratio"]["avg"] is None
     assert card["licenses_seen"] == []
+
+
+def test_none_status_tolerated():
+    """Regression (#61): a page with status_code=None (and no error) must not
+    crash build_data_card."""
+    card = build_data_card(
+        [{"url": "https://x", "status_code": None}],
+        {"source": "x", "mode": "crawl", "generator": "g"},
+    )
+    assert card["summary"]["pages"] == 1
