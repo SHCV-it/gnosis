@@ -203,3 +203,34 @@ def test_consent_cache_expires(monkeypatch):
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+def test_parse_ai_txt_ua_prefix_matching():
+    """Regression (#46): a User-Agent group token must prefix-match the crawler
+    UA (robots.txt semantics), not require exact full-string equality."""
+    text = "User-Agent: gnosis\nTraining: Deny\n\nUser-Agent: *\nTraining: Allow\n"
+    d = parse_ai_txt(text, user_agent="Gnosis/2.0 (auditable website-to-markdown converter)")
+    assert d["training"] == "Deny"
+
+    # a more specific group still wins over a generic one
+    text2 = (
+        "User-Agent: gnosis\nTraining: Deny\n\n"
+        "User-Agent: gnosis/2.0\nTraining: Allow\n"
+    )
+    d2 = parse_ai_txt(text2, user_agent="Gnosis/2.0 (auditable website-to-markdown converter)")
+    assert d2["training"] == "Allow"
+
+
+def test_parse_ai_txt_token_boundary():
+    """Regression (reviewer P2): 'g' must NOT match 'Gnosis/2.0' (token boundary),
+    while 'gnosis' and 'gnosis/2.0' must."""
+    text = "User-Agent: g\nTraining: Deny\n\nUser-Agent: *\nTraining: Allow\n"
+    assert parse_ai_txt(text, user_agent="Gnosis/2.0")["training"] == "Allow"
+
+
+def test_parse_ai_txt_empty_ua_group_falls_back_to_wildcard():
+    """Regression (reviewer P2): an empty User-Agent: line is treated as
+    wildcard, so its directives are wildcard-scoped (not a separate empty group
+    that shadows or drops them)."""
+    text = "User-Agent:\nTraining: Deny\n"
+    assert parse_ai_txt(text, user_agent="Gnosis/2.0")["training"] == "Deny"
