@@ -18,6 +18,7 @@ nav:
   - Provenance: provenance.md
   - CLI Reference: cli-reference.md
   - Architecture: architecture.md
+  - Capture Record Spec: capture-record-spec.md
 
 markdown_extensions:
   - pymdownx.highlight

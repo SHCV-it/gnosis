@@ -135,6 +135,8 @@ gnosis-doc report.pdf -o report.md
 
 ## Provenance: the contract
 
+The full machine-readable contract — every field, its exact semantics, and conformance rules — is in the [Capture Record Specification](https://github.com/SHCV-it/gnosis/blob/main/docs/capture-record-spec.md).
+
 ```yaml
 ---
 title: Quickstart
