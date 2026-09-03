@@ -263,3 +263,26 @@ def test_unhashable_key_rejected_cleanly():
     )
     ok, reason = verify_document(doc)
     assert not ok
+
+
+def test_block_scalar_not_missplit(keypair):
+    """Regression (#32): a block scalar containing '---' and 'signature: foo'
+    lines must not be mistaken for the frontmatter fence or a signature field."""
+    private_pem, public_b64 = keypair
+    body_hash = hashlib.sha256(BODY.encode("utf-8")).hexdigest()
+    doc = (
+        "---\nurl: https://a\n"
+        "notes: |\n  line one\n  ---\n  signature: not-a-sig\n  line four\n"
+        f"content_hash: {body_hash}\nbytes_sha256: def\nstatus_code: 200\n"
+        "fetched_at: '2026-09-03T00:00:00Z'\ngenerator: gnosis/2.0.0\n---\n\n" + BODY
+    )
+    metadata, body = split_frontmatter(doc)
+    assert metadata["notes"] == "line one\n---\nsignature: not-a-sig\nline four\n"
+    # re-sign must preserve the block scalar body and not emit duplicate keys
+    signed = sign_document(doc, private_pem)
+    # exactly one column-0 signature field (block-scalar content must not match)
+    sig_lines = [ln for ln in signed.split("\n") if ln.startswith("signature:")]
+    assert len(sig_lines) == 1
+    assert "signature: not-a-sig" in signed  # block scalar content preserved
+    ok, _ = verify_document(signed, expected_public_key=public_b64)
+    assert ok

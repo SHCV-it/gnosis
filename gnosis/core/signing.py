@@ -166,7 +166,7 @@ def split_frontmatter(document: str) -> tuple[dict, str]:
     lines = document.split("\n")
     end = None
     for i in range(1, len(lines)):
-        if lines[i].strip() == "---":
+        if lines[i].rstrip() == "---":
             end = i
             break
     if end is None:
@@ -179,8 +179,8 @@ def split_frontmatter(document: str) -> tuple[dict, str]:
 
 
 def _is_signature_line(line: str) -> bool:
-    stripped = line.lstrip()
-    return any(stripped.startswith(f"{f}:") for f in _STRIP_FIELDS)
+    # column-0 only: an indented line inside a block scalar must not match
+    return any(line.startswith(f"{f}:") for f in _STRIP_FIELDS)
 
 
 def sign_document(document: str, private_key_pem: str) -> str:
@@ -195,7 +195,7 @@ def sign_document(document: str, private_key_pem: str) -> str:
         return f"---\n{front}\n---\n\n{document}"
     lines = document.split("\n")
     end = next(
-        (i for i in range(1, len(lines)) if lines[i].strip() == "---"), len(lines) - 1
+        (i for i in range(1, len(lines)) if lines[i].rstrip() == "---"), len(lines) - 1
     )
     kept = [ln for ln in lines[:end] if not _is_signature_line(ln)]
     sig_lines = yaml.safe_dump(sig, sort_keys=False).rstrip("\n").split("\n")
