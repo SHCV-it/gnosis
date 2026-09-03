@@ -495,3 +495,20 @@ def test_url_to_filename_neutralizes_separators():
     assert "\\" not in name
     assert "/" not in name
     assert ":" not in name
+
+
+def test_crawl_plugin_manifest_hash_matches_file(tmp_path, server):
+    """Regression (#49): the crawl manifest content_hash must match each file's
+    frontmatter hash AFTER post_process plugins rewrite the body."""
+    plug = tmp_path / "plug.py"
+    plug.write_text("def post_process(markdown, metadata):\n    return markdown + '\\n<!-- plugin -->'\n")
+    cfg = tmp_path / "cfg.yaml"
+    cfg.write_text(f"plugins:\n  - {plug}\n")
+    result = run_cli(
+        [f"{server}/hub", "-o", str(tmp_path), "-f", "-q", "--all", "--config", str(cfg)]
+    )
+    assert result.exit_code == 0
+    manifest = json.loads((tmp_path / "_manifest.json").read_text())
+    for m in manifest:
+        meta = frontmatter.loads((tmp_path / m["file"]).read_text()).metadata
+        assert m["content_hash"] == meta["content_hash"]
