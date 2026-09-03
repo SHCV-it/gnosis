@@ -10,6 +10,7 @@ Fetching is advisory: a missing or disallowed file does not block capture.
 
 from __future__ import annotations
 
+import posixpath
 import time
 from urllib.parse import urlparse
 
@@ -153,6 +154,19 @@ async def fetch_host_consent(url: str, downloader) -> dict:
             transient = True
     except Exception:
         transient = True
+
+    # path-scoped llms.txt (llmstxt.org v2 allows subtree files like /docs/llms.txt)
+    path_dir = posixpath.dirname(urlparse(url).path)
+    if path_dir not in ("", "/") and "llms_txt" not in result:
+        try:
+            fetch = await downloader.fetch_result(f"{base}{path_dir}/llms.txt")
+            if fetch.status_code == 200:
+                result["llms_txt"] = True
+        except DownloadError as exc:
+            if not _is_definitive_absent(exc):
+                transient = True
+        except Exception:
+            transient = True
 
     if not transient:
         _cache[key] = (result, time.monotonic())

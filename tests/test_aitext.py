@@ -312,3 +312,38 @@ def test_absence_404_is_cached():
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+def test_path_scoped_llms_txt():
+    """Regression (#30): a subtree llms.txt (e.g. /docs/llms.txt) is recorded."""
+    from http.server import HTTPServer
+
+    class H(_Handler):
+        def do_GET(self):
+            if self.path == "/docs/llms.txt":
+                body = b"# llms.txt\n"
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            else:
+                super().do_GET()
+
+    srv = HTTPServer(("127.0.0.1", 8957), H)
+    srv.allow_reuse_address = True
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    try:
+        async def _run():
+            settings = DownloaderSettings(
+                rate_limit_ms=0, retries=0, allow_private_network=True, respect_robots=False
+            )
+            async with Downloader(settings) as dl:
+                return await fetch_host_consent("http://127.0.0.1:8957/docs/page", dl)
+
+        consent = asyncio.run(_run())
+        assert consent["llms_txt"] is True
+    finally:
+        srv.shutdown()
+        srv.server_close()
