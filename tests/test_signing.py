@@ -207,3 +207,15 @@ def test_content_hash_tamper_invalidates(keypair):
     tampered = signed.replace(f"content_hash: {declared}", "content_hash: " + "0" * 64)
     ok, _ = verify_document(tampered, expected_public_key=public_b64)
     assert not ok
+
+
+def test_datetime_canonicalized_to_z():
+    """Regression: quoted and unquoted ISO dates must canonicalise identically,
+    so a consumer with a different YAML parser computes the same manifest."""
+    from datetime import UTC, date, datetime
+
+    from gnosis.core.signing import _json_safe
+
+    assert _json_safe(datetime(2026, 9, 3, 0, 0, tzinfo=UTC)) == "2026-09-03T00:00:00Z"
+    assert _json_safe(datetime(2026, 9, 3, 0, 0)) == "2026-09-03T00:00:00Z"  # naive -> UTC
+    assert _json_safe(date(2026, 9, 3)) == "2026-09-03"

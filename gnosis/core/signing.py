@@ -44,7 +44,11 @@ def _json_safe(value):
     """Coerce a YAML-parsed value to a JSON-serialisable one (dates etc.)."""
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
-    if isinstance(value, (datetime, date)):
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=UTC)
+        return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    if isinstance(value, date):
         return value.isoformat()
     if isinstance(value, (list, tuple)):
         return [_json_safe(v) for v in value]
