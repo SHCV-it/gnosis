@@ -11,6 +11,7 @@
   <a href="https://github.com/SHCV-it/gnosis/actions"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/SHCV-it/gnosis/ci.yml?branch=main"></a>
   <a href="https://shcv-it.github.io/gnosis/"><img alt="Docs" src="https://img.shields.io/badge/docs-shcv--it.github.io-blue"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
+  <a href="https://doi.org/10.5281/zenodo.22276101"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.22276101.svg"></a>
 </p>
 
 **Gnosis** is an open-source web scraper and crawler that downloads websites
