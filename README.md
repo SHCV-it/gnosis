@@ -103,6 +103,12 @@ gnosis-doc report.pdf -o report.md
 - **ai.txt consent discovery** — the host's `ai.txt` directives and `llms.txt`
   presence are recorded in the frontmatter (`ai_txt` / `llms_txt`).
 
+> **ai.txt is advisory, not enforced.** gnosis probes only root-level
+> `/ai.txt` and `/llms.txt` (path-scoped files are a known limitation), records
+> the directives it finds, and does not, by default, refuse to scrape. To stop
+> scraping at opt-outs, use `--profile strict-optout` or an explicit `deny_if`
+> rule.
+
 > **ai.txt is advisory, not enforced.** gnosis *records* a site's ai.txt
 > opt-out (`Training: Deny`) in the frontmatter but does not, by default,
 > refuse to scrape it. If you want scraping to *stop* at opt-outs, enable a
