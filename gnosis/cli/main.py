@@ -22,7 +22,7 @@ from gnosis import __version__
 from gnosis.config import Settings, load_config
 from gnosis.config.profiles import PROFILES, get_profile
 from gnosis.config.settings import AuthSettings, expand_env
-from gnosis.core.aitext import fetch_host_consent
+from gnosis.core.aitext import clear_consent_cache, fetch_host_consent
 from gnosis.core.archive import Archiver
 from gnosis.core.checkpoint import load_checkpoint, save_checkpoint
 from gnosis.core.converter import MIN_CONTENT_THRESHOLD, HTMLToMarkdownConverter
@@ -391,6 +391,7 @@ def cli(
         sys.exit(1)
 
     # Load configuration
+    clear_consent_cache()
     settings = load_config(config)
 
     # Override settings from CLI options

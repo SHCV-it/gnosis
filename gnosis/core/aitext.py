@@ -16,23 +16,40 @@ from urllib.parse import urlparse
 _cache: dict[tuple[str, str], dict] = {}
 
 
-def parse_ai_txt(text: str) -> dict[str, str]:
-    """Parse ai.txt directives into a lowercase key -> value dict.
+def clear_consent_cache() -> None:
+    """Clear the consent cache. Call between unrelated jobs (library/MCP use),
+    since the module-level cache otherwise leaks state across runs."""
+    _cache.clear()
 
-    Full-line and trailing `#` comments are ignored; empty-valued directives
-    are skipped so a bare `Training:` never records an empty string.
+
+def parse_ai_txt(text: str, user_agent: str = "Gnosis") -> dict[str, str]:
+    """Parse ai.txt directives, resolving User-Agent groups.
+
+    ai.txt is robots.txt-style: directives are scoped to a `User-Agent` group.
+    The result is the directive set for the most specific group matching
+    `user_agent`, falling back to the `*` group. Full-line and trailing `#`
+    comments are ignored; empty-valued directives are skipped.
     """
-    directives: dict[str, str] = {}
+    groups: dict[str, dict[str, str]] = {"*": {}}
+    current = "*"
     for line in text.splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
+            continue
+        if line.lower().startswith("user-agent:"):
+            current = line.partition(":")[2].strip().lower()
+            groups.setdefault(current, {})
             continue
         if ":" in line:
             key, _, value = line.partition(":")
             value = value.partition("#")[0].strip()
             if value:
-                directives[key.strip().lower()] = value
-    return directives
+                groups[current][key.strip().lower()] = value
+
+    ua = user_agent.lower()
+    if ua in groups:
+        return dict(groups[ua])
+    return dict(groups.get("*", {}))
 
 
 _DENY_VALUES = {"deny", "disallow", "no", "opt-out", "optout", "forbidden", "prohibited", "false", "never"}
@@ -86,7 +103,8 @@ async def fetch_host_consent(url: str, downloader) -> dict:
     try:
         fetch = await downloader.fetch_result(f"{base}/ai.txt")
         if fetch.status_code == 200:
-            summary = summarize_ai_txt(parse_ai_txt(fetch.html))
+            ua = getattr(downloader.settings, "user_agent", "Gnosis")
+            summary = summarize_ai_txt(parse_ai_txt(fetch.html, user_agent=ua))
             if summary:
                 result["ai_txt"] = summary
     except Exception:

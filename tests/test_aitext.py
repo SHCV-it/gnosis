@@ -148,3 +148,18 @@ def test_llms_txt_recorded_when_ai_txt_absent():
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+def test_parse_ai_txt_group_scoping():
+    """Regression (panel P2): directives scoped to a specific User-Agent must not
+    be flattened away by a later wildcard group."""
+    text = (
+        "User-Agent: GPTBot\n"
+        "Training: Deny\n\n"
+        "User-Agent: *\n"
+        "Training: Allow\n"
+    )
+    # gnosis's UA is not GPTBot, so the * group applies -> Allow
+    assert parse_ai_txt(text, user_agent="Gnosis/2.0")["training"] == "Allow"
+    # GPTBot's specific opt-out must be preserved -> Deny
+    assert parse_ai_txt(text, user_agent="GPTBot")["training"] == "Deny"
