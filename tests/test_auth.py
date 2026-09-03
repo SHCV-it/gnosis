@@ -278,3 +278,81 @@ def test_same_origin_scheme_sensitive():
     assert _same_origin("http://h/p", "http://H/p") is True    # host case-insensitive
     assert _same_origin("http://h/p", "http://h:80/p") is True  # effective port
     assert _same_origin("http://h/p", "http://h:8080/p") is False
+
+
+def test_429_retry_after():
+    """Regression (#59): a 429 with Retry-After must be retried, not treated as
+    a fatal 4xx."""
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    class H(BaseHTTPRequestHandler):
+        def do_GET(self):
+            n = getattr(self.server, "hits", 0)
+            self.server.hits = n + 1
+            if self.server.hits == 1:
+                body = b"slow down"
+                self.send_response(429)
+                self.send_header("Retry-After", "1")
+            else:
+                body = b"<html>ok</html>"
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 8955), H)
+    srv.allow_reuse_address = True
+    srv.hits = 0
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    try:
+        async def _run():
+            settings = DownloaderSettings(
+                rate_limit_ms=0, retries=2, allow_private_network=True, respect_robots=False
+            )
+            async with Downloader(settings) as dl:
+                return await dl.fetch_result("http://127.0.0.1:8955/page")
+
+        result = asyncio.run(_run())
+        assert result.status_code == 200
+        assert srv.hits == 2
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def test_oversized_body_rejected():
+    """Regression (#60): a declared oversized body must be rejected before
+    buffering."""
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    class H(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-Length", str(60 * 1024 * 1024))  # 60 MiB
+            self.end_headers()
+
+        def log_message(self, *a):
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 8956), H)
+    srv.allow_reuse_address = True
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    try:
+        async def _run():
+            settings = DownloaderSettings(
+                rate_limit_ms=0, retries=0, allow_private_network=True, respect_robots=False
+            )
+            async with Downloader(settings) as dl:
+                return await dl.fetch_result("http://127.0.0.1:8956/page")
+
+        with pytest.raises(Exception):
+            asyncio.run(_run())
+    finally:
+        srv.shutdown()
+        srv.server_close()

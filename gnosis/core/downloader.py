@@ -18,6 +18,10 @@ from gnosis.config.settings import DownloaderSettings
 from gnosis.core.network import build_transport, check_ip_literal
 from gnosis.core.robots import RobotsChecker
 
+# Default ceiling on a single response body (Content-Length pre-check); a larger
+# or streaming body is rejected before being buffered into memory.
+MAX_BODY_BYTES = 50 * 1024 * 1024  # 50 MiB
+
 
 class DownloadError(Exception):
     """Raised when a download fails after all retries."""
@@ -203,6 +207,9 @@ class Downloader:
                         continue
 
                     response.raise_for_status()
+                    content_length = response.headers.get("content-length")
+                    if content_length and content_length.isdigit() and int(content_length) > MAX_BODY_BYTES:
+                        raise DownloadError(f"response body too large: {content_length} bytes")
                     chain.append(str(response.url))
                     return FetchResult(
                         url=url,
@@ -218,7 +225,17 @@ class Downloader:
 
             except httpx.HTTPStatusError as e:
                 last_error = e
-                if 400 <= e.response.status_code < 500:
+                status = e.response.status_code
+                if status == 429:
+                    retry_after = e.response.headers.get("retry-after")
+                    try:
+                        wait_time = min(int(retry_after), 60) if retry_after else 1
+                    except (TypeError, ValueError):
+                        wait_time = 1
+                    if attempt < self.settings.retries:
+                        await asyncio.sleep(wait_time)
+                    continue  # 429 is transient; retry, honoring Retry-After
+                if 400 <= status < 500:
                     break
             except httpx.RequestError as e:
                 last_error = e
