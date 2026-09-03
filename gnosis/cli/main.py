@@ -343,7 +343,7 @@ def _render_output(fetch, markdown: str, metadata: dict, settings: Settings) -> 
     "--sign-key",
     "sign_key",
     type=click.Path(exists=True, path_type=Path),
-    help="Path to an Ed25519 private key (PEM). Defaults to $GNOSIS_SIGNING_KEY.",
+    help="Path to an Ed25519 private key (PEM); $GNOSIS_SIGNING_KEY may be a path or the PEM itself.",
 )
 @click.version_option(version=__version__, prog_name="gnosis")
 def cli(
@@ -420,6 +420,8 @@ def cli(
         sys.exit(1)
     if sign:
         key = sign_key.read_text(encoding="utf-8") if sign_key else os.environ.get("GNOSIS_SIGNING_KEY")
+        if key and not key.startswith("-----BEGIN") and os.path.isfile(key):
+            key = Path(key).read_text(encoding="utf-8")
         if not key:
             console.print("[red]✗[/red] --sign requires --sign-key PATH or $GNOSIS_SIGNING_KEY")
             sys.exit(1)
@@ -575,12 +577,18 @@ async def _maybe_render(fetch, renderer, converter, settings: Settings, quiet: b
 
 
 def _read_md_body(path: Path) -> str:
-    """Read a markdown file, stripping the YAML frontmatter block."""
+    """Read a markdown file, stripping the YAML frontmatter block.
+
+    The closing fence must be a column-0 "---" (not a "---" inside a URL or
+    other frontmatter value).
+    """
     text = path.read_text(encoding="utf-8")
-    if text.startswith("---"):
-        parts = text.split("---", 2)
-        if len(parts) >= 3:
-            return parts[2].lstrip("\n")
+    if not text.startswith("---\n"):
+        return text
+    lines = text.split("\n")
+    for i in range(1, len(lines)):
+        if lines[i].rstrip() == "---":
+            return "\n".join(lines[i + 1 :]).lstrip("\n")
     return text
 
 

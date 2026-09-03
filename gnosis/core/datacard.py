@@ -33,10 +33,10 @@ def build_data_card(pages: list[dict], job: dict) -> dict:
         "summary": {
             "pages": n,
             "succeeded": sum(
-                1 for p in pages if not p.get("error") and p.get("status_code", 0) < 400
+                1 for p in pages if not p.get("error") and (p.get("status_code") or 0) < 400
             ),
             "failed": sum(
-                1 for p in pages if p.get("error") or p.get("status_code", 0) >= 400
+                1 for p in pages if p.get("error") or (p.get("status_code") or 0) >= 400
             ),
             "total_raw_bytes": total_raw,
             "total_markdown_chars": total_md,
