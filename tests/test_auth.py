@@ -356,3 +356,17 @@ def test_oversized_body_rejected():
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+def test_effective_headers():
+    """effective_headers exposes UA + Accept + auth/custom headers for plugins."""
+    settings = DownloaderSettings(
+        user_agent="UA/1.0",
+        headers={"X-Custom": "v"},
+        auth=AuthSettings(type="bearer", token="t"),
+    )
+    dl = Downloader(settings)
+    h = dl.effective_headers()
+    assert h["User-Agent"] == "UA/1.0"
+    assert h["X-Custom"] == "v"
+    assert h["Authorization"] == "Bearer t"

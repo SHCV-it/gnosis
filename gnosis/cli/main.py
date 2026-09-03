@@ -666,7 +666,7 @@ async def download_and_convert(
     if not quiet:
         console.print(f"[blue]📥[/blue] Downloading: {url}")
 
-    fetch_url, fetch_headers = plugins.pre_fetch(url, {})
+    fetch_url, fetch_headers = plugins.pre_fetch(url, downloader.effective_headers())
     try:
         fetch = await downloader.fetch_result(fetch_url, fetch_headers)
         plugins.post_fetch(fetch)
