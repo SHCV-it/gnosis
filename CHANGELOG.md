@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.1.1] - 2026-09-03
+
+### Changed
+- release to trigger Zenodo DOI archival (no code changes since v2.1.0)
+
 ## [2.1.0] - 2026-09-03
 
 ### Fixed
