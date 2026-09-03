@@ -10,15 +10,18 @@ Fetching is advisory: a missing or disallowed file does not block capture.
 
 from __future__ import annotations
 
+import time
 from urllib.parse import urlparse
 
 # Per-host cache so a crawl does not re-fetch the consent files for every page.
-_cache: dict[tuple[str, str], dict] = {}
+# Entries expire after _CACHE_TTL_SECONDS so long-lived processes (MCP/library)
+# do not hold stale consent state forever.
+_cache: dict[tuple[str, str], tuple[dict, float]] = {}
+_CACHE_TTL_SECONDS = 300.0
 
 
 def clear_consent_cache() -> None:
-    """Clear the consent cache. Call between unrelated jobs (library/MCP use),
-    since the module-level cache otherwise leaks state across runs."""
+    """Clear the consent cache. Call between unrelated jobs (library/MCP use)."""
     _cache.clear()
 
 
@@ -94,8 +97,11 @@ async def fetch_host_consent(url: str, downloader) -> dict:
     if not host or parsed.scheme not in ("http", "https"):
         return {}
     key = (parsed.scheme, host)
+    now = time.monotonic()
     if key in _cache:
-        return _cache[key]
+        result, cached_at = _cache[key]
+        if now - cached_at < _CACHE_TTL_SECONDS:
+            return result
 
     result: dict = {}
     base = f"{parsed.scheme}://{host}"
@@ -119,5 +125,5 @@ async def fetch_host_consent(url: str, downloader) -> dict:
     except Exception:
         pass
 
-    _cache[key] = result
+    _cache[key] = (result, time.monotonic())
     return result

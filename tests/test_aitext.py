@@ -163,3 +163,43 @@ def test_parse_ai_txt_group_scoping():
     assert parse_ai_txt(text, user_agent="Gnosis/2.0")["training"] == "Allow"
     # GPTBot's specific opt-out must be preserved -> Deny
     assert parse_ai_txt(text, user_agent="GPTBot")["training"] == "Deny"
+
+
+def test_consent_cache_expires(monkeypatch):
+    """Regression (#31): a stale cache entry must be re-fetched, not returned."""
+    import gnosis.core.aitext as aitext
+    hits = {"ai": 0}
+
+    class Counting(_Handler):
+        def do_GET(self):
+            if self.path == "/ai.txt":
+                hits["ai"] += 1
+            super().do_GET()
+
+    from http.server import HTTPServer
+
+    srv = HTTPServer(("127.0.0.1", 8950), Counting)
+    srv.allow_reuse_address = True
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    try:
+        async def _run():
+            settings = DownloaderSettings(
+                rate_limit_ms=0, retries=0, allow_private_network=True, respect_robots=False
+            )
+            async with Downloader(settings) as dl:
+                return await aitext.fetch_host_consent("http://127.0.0.1:8950/page", dl)
+
+        first = asyncio.run(_run())
+        assert first["ai_txt"]["training"] == "Allow"
+        assert hits["ai"] == 1
+        # within TTL: cached, no re-fetch
+        asyncio.run(_run())
+        assert hits["ai"] == 1
+        # force expiry: re-fetch
+        monkeypatch.setattr(aitext, "_CACHE_TTL_SECONDS", -1.0)
+        asyncio.run(_run())
+        assert hits["ai"] == 2
+    finally:
+        srv.shutdown()
+        srv.server_close()
