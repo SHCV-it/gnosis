@@ -828,6 +828,9 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     duplicate_count = 0
     failed: list[str] = []
     seen_hashes, manifest = load_checkpoint(output_dir)
+    known_bytes = {m["url"]: m.get("bytes_sha256") for m in manifest if m.get("bytes_sha256")}
+    known_manifest = {m["url"]: m for m in manifest}
+    unchanged_count = 0
     page_records: list[dict] = []
     export_list: list[dict] = []
 
@@ -835,6 +838,46 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
         async for page_url, fetch in crawler.crawl(url):
             if not quiet:
                 console.print(f"[blue]📥[/blue] Downloaded: {page_url}")
+
+            bytes_sha = compute_bytes_hash(fetch.raw_bytes)
+            _filename = url_to_filename(page_url) + settings.output.extension
+            if (
+                known_bytes.get(page_url) == bytes_sha
+                and (output_dir / _filename).exists()
+                and not settings.output.overwrite
+            ):
+                # keep the data card + export complete for unchanged pages
+                entry = known_manifest.get(page_url) or {}
+                body = _read_md_body(output_dir / _filename) if (output_dir / _filename).exists() else ""
+                page_records.append(
+                    {
+                        "url": page_url,
+                        "status_code": entry.get("status_code"),
+                        "raw_bytes": 0,
+                        "markdown_chars": len(body),
+                        "content_hash": entry.get("content_hash"),
+                        "bytes_sha256": entry.get("bytes_sha256"),
+                        "retention_ratio": None,
+                        "stripped_elements": None,
+                        "low_content": False,
+                        "license": None,
+                    }
+                )
+                if fmt:
+                    export_list.append(
+                        {
+                            "url": page_url,
+                            "markdown": body,
+                            "content_hash": entry.get("content_hash"),
+                            "bytes_sha256": entry.get("bytes_sha256"),
+                            "status_code": entry.get("status_code"),
+                            "title": entry.get("title") or "",
+                        }
+                    )
+                unchanged_count += 1
+                if not quiet:
+                    console.print(f"[dim]⏭  Unchanged (same bytes): {page_url}[/dim]")
+                continue
 
             try:
                 html = await _maybe_render(fetch, renderer, converter, settings, quiet)
@@ -913,6 +956,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                     "fetched_at": fetch.fetched_at,
                     "status_code": fetch.status_code,
                     "title": metadata.get("title") or "",
+                    "bytes_sha256": bytes_sha,
                 }
             )
             save_checkpoint(output_dir, seen_hashes, manifest)
@@ -963,6 +1007,8 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
             console.print(f"    Skipped: {skipped_count} files (already exist)")
         if duplicate_count > 0:
             console.print(f"    [dim]Skipped: {duplicate_count} duplicates (same content)[/dim]")
+        if unchanged_count > 0:
+            console.print(f"    [dim]Unchanged: {unchanged_count} pages (same bytes)[/dim]")
         if failed:
             console.print(f"    [red]Failed: {len(failed)} pages[/red]")
 
@@ -971,7 +1017,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
 
     # Meaningful exit codes for schedulers: 0 = at least one page saved,
     # 1 = nothing saved at all.
-    if saved_count == 0 and skipped_count == 0 and duplicate_count == 0:
+    if saved_count == 0 and skipped_count == 0 and duplicate_count == 0 and unchanged_count == 0:
         sys.exit(1)
 
 
