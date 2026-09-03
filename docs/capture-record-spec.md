@@ -1,6 +1,6 @@
 # Capture Record Specification
 
-**Version:** 1.0 (Draft)
+**Version:** 1.1 (Draft)
 **Date:** 2026-09-03
 **Editor:** Ali Zahid Raja, SHCV IT OÜ
 **License:** MIT
@@ -78,6 +78,11 @@ are identical in both.
 ### 3.1 Required fields
 
 A conformant record **MUST** contain all of the following.
+
+#### `title`
+**Type:** string
+**Semantics:** The page title (may be an empty string). Always present; the
+record is not valid without it.
 
 #### `url`
 **Type:** string (absolute URL)
@@ -157,10 +162,16 @@ error in this space.
 | Field | Type | Condition | Semantics |
 |---|---|---|---|
 | `requested_url` | string | Final URL ≠ requested URL | The URL originally requested |
-| `redirect_chain` | list of strings | Any redirect occurred | Every URL traversed, final URL last |
+| `redirect_chain` | list of strings | Always present | Every URL traversed, final URL last (single-element when no redirect occurred) |
 | `content_type` | string | Header present | Response `Content-Type` verbatim |
 | `etag` | string | Header present | Response `ETag` verbatim |
 | `last_modified` | string | Header present | Response `Last-Modified` verbatim |
+| `language` | string | Extracted | Page language (`<html lang>` or og:locale) |
+| `author` | string | Extracted | Page author (meta name=author etc.) |
+| `description` | string | Extracted | Page description (meta/og) |
+| `site_name` | string | Extracted | og:site_name |
+| `published_time` | string | Extracted | og:article:published_time |
+| `modified_time` | string | Extracted | og:article:modified_time |
 
 ### 3.4 Render fields
 
@@ -206,7 +217,7 @@ When a producer signs the record, it **MUST** emit all of:
 
 | Field | Type | Semantics |
 |---|---|---|
-| `signature` | string (base64) | Ed25519 signature over the canonical manifest (all §3 fields plus the recomputed body hash) |
+| `signature` | string (base64) | Ed25519 signature over the canonical manifest: every frontmatter field except the signature block, plus a recomputed `body_sha256`. The stored `content_hash` field is signed as-is, and a verifier MUST cross-check that it equals `body_sha256`. |
 | `public_key` | string (base64) | The signer's Ed25519 public key |
 | `manifest_sha256` | string (hex) | SHA-256 of the signed canonical manifest |
 | `signed_at` | string (ISO 8601 UTC) | When signing occurred |

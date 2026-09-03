@@ -10,7 +10,7 @@ fetched_at: '2026-09-02T08:41:44Z'
 content_hash: 1549512c...16fd     # SHA-256 of the markdown body
 bytes_sha256: 85052df6...bcb31    # SHA-256 of the raw response bytes
 status_code: 200
-generator: gnosis/1.4.1
+generator: gnosis/2.0.0
 retention_ratio: 0.9137          # surviving text / source text (0..1)
 stripped_elements: 4             # boilerplate elements removed
 # low_content: true              # set when a page is likely truncated/bot-blocked
@@ -61,10 +61,11 @@ hop is re-checked.
 
 ## Cryptographic signing (seal of origin)
 
-\`gnosis <url> --sign --sign-key key.pem\` (or \`$GNOSIS_SIGNING_KEY\`) adds an
+`gnosis <url> --sign --sign-key key.pem` (or `$GNOSIS_SIGNING_KEY`) adds an
 Ed25519 signature over a canonical manifest of the provenance fields plus the
-recomputed body hash. \`gnosis-keygen\` generates a keypair and
-\`gnosis-verify file.md\` checks a document, exiting non-zero if the body or
-provenance changed after signing. Tamper-evident, no trusted third party.
+recomputed body hash. `gnosis-keygen` generates a keypair and
+`gnosis-verify file.md --public-key <key>` checks a document, exiting non-zero if the body or
+provenance changed, or if the identity is not pinned (verify requires the
+expected public key to establish origin). Tamper-evident, no trusted third party.
 
-Install the optional dependency with \`pip install 'gnosis-markdown[sign]'\`.
+Install the optional dependency with `pip install 'gnosis-markdown[sign]'`.

@@ -18,9 +18,11 @@ from datetime import UTC, datetime
 
 import yaml
 
-# Fields that make up the signature block itself and are therefore excluded
-# from the canonical manifest. Everything else in the frontmatter is signed.
+# Fields excluded from the canonical manifest (they ARE the signature block).
 _SIGNATURE_FIELDS = frozenset({"signature", "public_key", "manifest_sha256"})
+# Fields stripped when RE-signing (superset: signed_at is signed content but the
+# old one must be removed so re-signing replaces rather than duplicates).
+_STRIP_FIELDS = _SIGNATURE_FIELDS | {"signed_at"}
 
 
 def _ed25519():
@@ -45,7 +47,7 @@ def _json_safe(value):
     if isinstance(value, (list, tuple)):
         return [_json_safe(v) for v in value]
     if isinstance(value, dict):
-        return {k: _json_safe(v) for k, v in value.items()}
+        return {_json_safe(k): _json_safe(v) for k, v in value.items()}
     return str(value)
 
 
@@ -60,7 +62,9 @@ def canonical_manifest(markdown: str, metadata: dict) -> str:
     manifest = {
         k: _json_safe(v) for k, v in metadata.items() if k not in _SIGNATURE_FIELDS
     }
-    manifest["content_hash"] = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
+    # The STORED content_hash is signed as-is; the body is bound independently
+    # via a recomputed hash, so tampering either one invalidates the signature.
+    manifest["body_sha256"] = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
     return json.dumps(manifest, sort_keys=True, separators=(",", ":"))
 
 
@@ -119,6 +123,9 @@ def verify_signature(
         stored = metadata.get("manifest_sha256")
         if stored and hashlib.sha256(manifest_bytes).hexdigest() != stored:
             return False
+        declared = metadata.get("content_hash")
+        if declared and declared != hashlib.sha256(markdown.encode("utf-8")).hexdigest():
+            return False
         public_key = Ed25519PublicKey.from_public_bytes(base64.b64decode(public_key_b64))
         public_key.verify(base64.b64decode(signature), manifest_bytes)
         return True
@@ -147,7 +154,7 @@ def split_frontmatter(document: str) -> tuple[dict, str]:
 
 def _is_signature_line(line: str) -> bool:
     stripped = line.lstrip()
-    return any(stripped.startswith(f"{f}:") for f in _SIGNATURE_FIELDS)
+    return any(stripped.startswith(f"{f}:") for f in _STRIP_FIELDS)
 
 
 def sign_document(document: str, private_key_pem: str) -> str:

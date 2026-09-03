@@ -26,6 +26,11 @@ PROFILES: dict[str, list[dict]] = {
             "reason": "site prohibits AI training",
         },
         {
+            "name": "no-data-denied",
+            "deny_if": {"ai_txt": {"data": "Deny"}},
+            "reason": "site prohibits use of its content as data",
+        },
+        {
             "name": "no-proprietary",
             "deny_if": {"license": ["All Rights Reserved"]},
             "reason": "proprietary content",

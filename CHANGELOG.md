@@ -11,6 +11,18 @@
   TLS SNI/certificate verification still uses the original hostname, so pinning
   does not weaken TLS.
 
+## [Unreleased]
+
+### Fixed
+- signing: re-signing no longer emits duplicate `signed_at` keys; the STORED
+  `content_hash` is now authenticated (signed + cross-checked against a
+  recomputed body hash)
+- `strict-optout` profile now blocks `Data: Deny` (not just `Training: Deny`)
+- `llms.txt` is recorded even when `ai.txt` is absent (no short-circuit)
+- default.yaml now documents deny-overrides (not the old allow-overrides)
+- docs: spec reconciled with emitted fields, CLI reference lists all flags,
+  stale versions corrected
+
 ## [2.0.0] - 2026-09-03
 
 ### Added
@@ -27,7 +39,7 @@
 - SSRF guard now blocks CGNAT/6to4/Teredo/NAT64 (previously claimed, now real) (#24)
 
 ### Changed
-- Independent multi-panel test-suite audit; CI installs `.[test]`; 224 tests
+- Independent multi-panel test-suite audit; CI installs `.[test]`; 232 tests
 
 ## [1.4.3] - 2026-09-02
 

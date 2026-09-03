@@ -90,14 +90,16 @@ async def fetch_host_consent(url: str, downloader) -> dict:
             if summary:
                 result["ai_txt"] = summary
     except Exception:
-        return result
+        # ai.txt absent/unreachable is NOT an error for consent discovery —
+        # proceed to llms.txt so its presence is still recorded.
+        pass
 
     try:
         fetch = await downloader.fetch_result(f"{base}/llms.txt")
         if fetch.status_code == 200:
             result["llms_txt"] = True
     except Exception:
-        return result
+        pass
 
     _cache[key] = result
     return result

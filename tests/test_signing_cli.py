@@ -7,10 +7,13 @@ from gnosis.core.signing import generate_keypair, sign_document
 
 
 def make_doc() -> str:
+    import hashlib
+
+    body = "# Body\n"
     return (
-        "---\nurl: https://x\ncontent_hash: abc\nbytes_sha256: def\n"
+        f"---\nurl: https://x\ncontent_hash: {hashlib.sha256(body.encode()).hexdigest()}\nbytes_sha256: def\n"
         "status_code: 200\nfetched_at: '2026-09-03T00:00:00Z'\ngenerator: gnosis/2.0.0\n"
-        "---\n\n# Body\n"
+        "---\n\n" + body
     )
 
 

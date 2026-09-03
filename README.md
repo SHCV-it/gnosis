@@ -35,6 +35,8 @@ them. It is the *auditable* web-to-Markdown converter.
 | JS rendering | ✅ opt-in | ✅ | ✅ | ✅ |
 | **Byte-level SHA-256 provenance** | ✅ | ❌ | ❌ | ❌ |
 | **WARC archival (replay via pywb)** | ✅ | ❌ | ❌ | ❌ |
+| **Ed25519 signed records (seal of origin)** | ✅ | ❌ | ❌ | ❌ |
+| **ai.txt consent recording + policy engine** | ✅ | ❌ | ❌ | ❌ |
 | **Built-in SSRF / private-network guard** | ✅ | ⚠️ | ❌ | ❌ |
 | robots.txt + politeness | ✅ | ⚠️ | ⚠️ | ❌ |
 | Self-hostable / offline | ✅ | ✅ | ✅ | ✅ |
@@ -154,7 +156,7 @@ fetched_at: '2026-09-02T08:41:44Z'
 content_hash: 1549512c...16fd     # SHA-256 of the markdown body
 bytes_sha256: 85052df6...bcb31    # SHA-256 of the raw response bytes
 status_code: 200
-generator: gnosis/1.2.1
+generator: gnosis/2.0.0
 etag: '"61e917f4..."'
 last_modified: Fri, 31 Jul 2026 16:07:37 GMT
 ---

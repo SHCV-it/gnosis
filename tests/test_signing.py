@@ -172,11 +172,12 @@ def test_sign_handles_unquoted_dates(keypair):
     """Regression: YAML coerces unquoted dates to date objects, which must not
     crash the JSON manifest builder."""
     private_pem, public_b64 = keypair
+    body_hash = hashlib.sha256(b"# Body\n").hexdigest()
     doc = (
         "---\nurl: https://x\n"
         "published_time: 2026-01-15\n"
         "modified_time: 2026-02-20\n"
-        "content_hash: abc\nbytes_sha256: def\nstatus_code: 200\n"
+        f"content_hash: {body_hash}\nbytes_sha256: def\nstatus_code: 200\n"
         "fetched_at: '2026-09-03T00:00:00Z'\ngenerator: gnosis/2.0.0\n---\n\n# Body\n"
     )
     signed = sign_document(doc, private_pem)
@@ -192,5 +193,17 @@ def test_resign_replaces_not_duplicates(keypair):
     twice = sign_document(once, private_pem)
     assert twice.count("signature:") == 1
     assert twice.count("public_key:") == 1
+    assert twice.count("signed_at:") == 1
     ok, _ = verify_document(twice, expected_public_key=public_b64)
     assert ok
+
+
+def test_content_hash_tamper_invalidates(keypair):
+    """Regression (judge P1): the STORED content_hash field must be authenticated,
+    not silently overwritten by the recomputed body hash."""
+    private_pem, public_b64 = keypair
+    signed = sign_document(make_doc(), private_pem)
+    declared = hashlib.sha256(BODY.encode("utf-8")).hexdigest()
+    tampered = signed.replace(f"content_hash: {declared}", "content_hash: " + "0" * 64)
+    ok, _ = verify_document(tampered, expected_public_key=public_b64)
+    assert not ok

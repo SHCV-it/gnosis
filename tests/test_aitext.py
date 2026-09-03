@@ -104,3 +104,42 @@ def test_parse_ai_txt_comments_and_empty_values():
     assert d["allow"] == "/api/"
     assert d["disallow"] == "/private/"
     assert "data" not in d  # empty value skipped
+
+
+def test_llms_txt_recorded_when_ai_txt_absent():
+    """Regression (panel P1): llms.txt must be recorded even when ai.txt is
+    absent (previously the ai.txt 404 short-circuited the llms.txt probe)."""
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    class H(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/llms.txt":
+                body = b"# llms.txt\n"
+                self.send_response(200)
+            else:
+                body = b"not found"
+                self.send_response(404)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 8949), H)
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    try:
+        async def _run():
+            settings = DownloaderSettings(
+                rate_limit_ms=0, retries=0, allow_private_network=True, respect_robots=False
+            )
+            async with Downloader(settings) as dl:
+                return await fetch_host_consent("http://127.0.0.1:8949/page", dl)
+
+        consent = asyncio.run(_run())
+        assert consent["llms_txt"] is True
+        assert "ai_txt" not in consent
+    finally:
+        srv.shutdown()

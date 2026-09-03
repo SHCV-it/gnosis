@@ -60,3 +60,9 @@ def test_strict_optout_blocks_disallow_after_normalization():
         assert not engine.evaluate("https://x/a", {"ai_txt": ai}).allowed, value
     ai = summarize_ai_txt(parse_ai_txt("Training: Allow\n"))
     assert engine.evaluate("https://x/a", {"ai_txt": ai}).allowed
+
+
+def test_strict_optout_blocks_data_denied():
+    """Regression (panel P1): Data: Deny must be blocked, not just Training."""
+    engine = PolicyEngine(get_profile("strict-optout"))
+    assert not engine.evaluate("https://x/a", {"ai_txt": {"data": "Deny"}}).allowed
