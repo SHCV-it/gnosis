@@ -11,6 +11,24 @@
   TLS SNI/certificate verification still uses the original hostname, so pinning
   does not weaken TLS.
 
+## [2.0.0] - 2026-09-03
+
+### Added
+- Ed25519 cryptographic signing (seal of origin): `gnosis --sign`, `gnosis-keygen`, `gnosis-verify` (#9)
+- ai.txt + llms.txt consent discovery recorded in provenance (#10)
+- Data Cards per scrape/crawl job (`data-card.json`) (#11)
+- Compliance Policy Engine (config rules) + `--profile` presets (#12, #15)
+- First-class MCP server (`gnosis-mcp`) (#13)
+- Multi-format export: `--format json|jsonl|parquet` (#14)
+- Hash-native incremental crawl (#16)
+- Plugin hooks: `pre_fetch` / `post_fetch` / `post_process` (#17)
+
+### Fixed
+- SSRF guard now blocks CGNAT/6to4/Teredo/NAT64 (previously claimed, now real) (#24)
+
+### Changed
+- Independent multi-panel test-suite audit; CI installs `.[test]`; 224 tests
+
 ## [1.4.3] - 2026-09-02
 
 ### Fixed
