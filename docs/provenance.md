@@ -38,9 +38,8 @@ stored once, and everything is re-fetchable and re-verifiable.
 `--chunk` writes a `<page>.md.chunks.json` manifest with stable chunk ids,
 heading paths, **token counts**, `chunk_sha256`, and document-relative char
 offsets — anchor a citation back to the exact source span. Chunking is
-token-aware: `--chunk-size` (chars) is reconciled against `max_tokens` (default
-512) so a chunk never exceeds the token budget, with a configurable token
-overlap between adjacent chunks.
+token-aware: chunks never exceed a 512-token budget, with a 64-token overlap
+between adjacent chunks.
 
 ## Capture quality
 
