@@ -828,6 +828,8 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     duplicate_count = 0
     failed: list[str] = []
     seen_hashes, manifest = load_checkpoint(output_dir)
+    known_bytes = {m["url"]: m.get("bytes_sha256") for m in manifest if m.get("bytes_sha256")}
+    unchanged_count = 0
     page_records: list[dict] = []
     export_list: list[dict] = []
 
@@ -835,6 +837,14 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
         async for page_url, fetch in crawler.crawl(url):
             if not quiet:
                 console.print(f"[blue]📥[/blue] Downloaded: {page_url}")
+
+            bytes_sha = compute_bytes_hash(fetch.raw_bytes)
+            _filename = url_to_filename(page_url) + settings.output.extension
+            if known_bytes.get(page_url) == bytes_sha and (output_dir / _filename).exists():
+                unchanged_count += 1
+                if not quiet:
+                    console.print(f"[dim]⏭  Unchanged (same bytes): {page_url}[/dim]")
+                continue
 
             try:
                 html = await _maybe_render(fetch, renderer, converter, settings, quiet)
@@ -913,6 +923,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                     "fetched_at": fetch.fetched_at,
                     "status_code": fetch.status_code,
                     "title": metadata.get("title") or "",
+                    "bytes_sha256": bytes_sha,
                 }
             )
             save_checkpoint(output_dir, seen_hashes, manifest)

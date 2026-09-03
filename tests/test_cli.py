@@ -306,6 +306,18 @@ class TestSinglePage:
         result = run_cli([f"{server}/page", "-o", str(tmp_path), "-f", "-q", "--profile", "nope"])
         assert result.exit_code == 2
 
+    def test_incremental_crawl_skips_unchanged(self, server, tmp_path):
+        run_cli([f"{server}/hub", "-o", str(tmp_path), "-f", "-q", "--all"])
+        md_files = list(tmp_path.glob("*.md"))
+        assert md_files
+        mtimes = {f.name: f.stat().st_mtime for f in md_files}
+        cp = json.loads((tmp_path / ".gnosis-checkpoint.json").read_text())
+        assert all("bytes_sha256" in m and len(m["bytes_sha256"]) == 64 for m in cp["manifest"])
+        # second crawl: unchanged pages must NOT be rewritten
+        run_cli([f"{server}/hub", "-o", str(tmp_path), "-f", "-q", "--all"])
+        for f in md_files:
+            assert f.stat().st_mtime == mtimes[f.name]
+
     def test_empty_page_still_written(self, server, tmp_path):
         """Pages with minimal content should still be captured."""
         result = run_cli([f"{server}/empty", "-o", str(tmp_path), "-f", "-q"])
