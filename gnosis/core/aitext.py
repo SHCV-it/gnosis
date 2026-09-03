@@ -13,6 +13,10 @@ from __future__ import annotations
 import time
 from urllib.parse import urlparse
 
+import httpx
+
+from gnosis.core.downloader import DownloadError
+
 # Per-host cache so a crawl does not re-fetch the consent files for every page.
 # Entries expire after _CACHE_TTL_SECONDS so long-lived processes (MCP/library)
 # do not hold stale consent state forever.
@@ -23,6 +27,12 @@ _CACHE_TTL_SECONDS = 300.0
 def clear_consent_cache() -> None:
     """Clear the consent cache. Call between unrelated jobs (library/MCP use)."""
     _cache.clear()
+
+
+def _is_definitive_absent(exc: Exception) -> bool:
+    """True when the error is a definitive 404 (cacheable) vs a transient one."""
+    cause = getattr(exc, "__cause__", None)
+    return isinstance(cause, httpx.HTTPStatusError) and cause.response.status_code == 404
 
 
 def parse_ai_txt(text: str, user_agent: str = "Gnosis") -> dict[str, str]:
@@ -102,9 +112,9 @@ def summarize_ai_txt(directives: dict[str, str]) -> dict[str, str]:
 async def fetch_host_consent(url: str, downloader) -> dict:
     """Fetch ai.txt + llms.txt for a host; return `{ai_txt?, llms_txt?}` (cached).
 
-    Results are cached per (scheme, host) for `_CACHE_TTL_SECONDS`. A failed
-    probe (absent, 404, or transient error) records nothing for that file, and
-    the (possibly empty) result is cached for the TTL duration.
+    Definitive absence (404) is cached for `_CACHE_TTL_SECONDS`; transient
+    failures (5xx / network) are NOT cached, so a one-off error does not
+    suppress consent discovery for the rest of the run.
     """
     parsed = urlparse(url)
     host = parsed.netloc
@@ -119,6 +129,7 @@ async def fetch_host_consent(url: str, downloader) -> dict:
 
     result: dict = {}
     base = f"{parsed.scheme}://{host}"
+    transient = False
 
     try:
         fetch = await downloader.fetch_result(f"{base}/ai.txt")
@@ -127,17 +138,22 @@ async def fetch_host_consent(url: str, downloader) -> dict:
             summary = summarize_ai_txt(parse_ai_txt(fetch.html, user_agent=ua))
             if summary:
                 result["ai_txt"] = summary
+    except DownloadError as exc:
+        if not _is_definitive_absent(exc):
+            transient = True
     except Exception:
-        # ai.txt absent/unreachable is NOT an error for consent discovery —
-        # proceed to llms.txt so its presence is still recorded.
-        pass
+        transient = True
 
     try:
         fetch = await downloader.fetch_result(f"{base}/llms.txt")
         if fetch.status_code == 200:
             result["llms_txt"] = True
+    except DownloadError as exc:
+        if not _is_definitive_absent(exc):
+            transient = True
     except Exception:
-        pass
+        transient = True
 
-    _cache[key] = (result, time.monotonic())
+    if not transient:
+        _cache[key] = (result, time.monotonic())
     return result

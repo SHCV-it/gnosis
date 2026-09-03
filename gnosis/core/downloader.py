@@ -227,7 +227,7 @@ class Downloader:
                 wait_time = 2**attempt
                 await asyncio.sleep(wait_time)
 
-        raise DownloadError(f"Failed to download {url}: {last_error}")
+        raise DownloadError(f"Failed to download {url}: {last_error}") from last_error
 
     async def fetch(self, url: str) -> str:
         """
