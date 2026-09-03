@@ -60,9 +60,19 @@ def _matches(cond: dict, url: str, metadata: dict) -> bool:
         ai = metadata.get("ai_txt") or {}
         if isinstance(ai, dict):
             for key, value in cond["ai_txt"].items():
-                got = str(ai.get(key) or "").lower()
-                if got and got == str(value).lower():
-                    return True
+                if key == "disallow":
+                    # deny when the SITE's disallow directive covers the page path
+                    site_disallow = ai.get("disallow")
+                    if site_disallow:
+                        path = urlparse(url).path
+                        patterns = [site_disallow] if isinstance(site_disallow, str) else site_disallow
+                        for pat in patterns:
+                            if pat and (pat == "/" or path.startswith(pat)):
+                                return True
+                else:
+                    got = str(ai.get(key) or "").lower()
+                    if got and got == str(value).lower():
+                        return True
     return False
 
 
