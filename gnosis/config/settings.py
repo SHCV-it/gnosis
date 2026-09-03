@@ -375,7 +375,11 @@ def load_config(config_path: Optional[Path] = None) -> Settings:
         )
 
     settings.policies = data.get("policies") or []
-    settings.plugins = data.get("plugins") or []
+    _plugins = data.get("plugins") or []
+    settings.plugins = [
+        str((config_path.parent / pp).resolve()) if not Path(pp).is_absolute() else pp
+        for pp in _plugins
+    ]
     return settings
 
 

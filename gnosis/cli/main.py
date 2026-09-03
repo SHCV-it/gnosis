@@ -680,7 +680,6 @@ async def download_and_convert(
     html = await _maybe_render(fetch, renderer, converter, settings, quiet)
     metadata = converter.extract_metadata(html)
     markdown = converter.convert(html, base_url=fetch.final_url)
-    markdown = plugins.post_process(markdown, metadata)
     metadata["retention_ratio"] = converter.stats.retention_ratio
     metadata["stripped_elements"] = converter.stats.stripped_elements
     if converter.stats.markdown_chars < 150:
@@ -708,6 +707,7 @@ async def download_and_convert(
             policy_decision=metadata["policy_decision"],
         )
         sys.exit(1)
+    markdown = plugins.post_process(markdown, metadata)
     document = _render_output(fetch, markdown, metadata, settings)
 
     # Generate output filename
@@ -811,9 +811,9 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
     """Crawl all child pages and convert each to markdown."""
     downloader = Downloader(settings.downloader)
     converter = HTMLToMarkdownConverter(settings.converter, verbose=verbose)
-    crawler = Crawler(settings.crawler, downloader)
-    policy = PolicyEngine(settings.policies)
     plugins = PluginManager(settings.plugins)
+    crawler = Crawler(settings.crawler, downloader, pre_fetch=plugins.pre_fetch)
+    policy = PolicyEngine(settings.policies)
     archiver = (
         Archiver(Path(settings.output.directory), user_agent=settings.downloader.user_agent)
         if settings.output.warc
@@ -890,7 +890,6 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                 html = await _maybe_render(fetch, renderer, converter, settings, quiet)
                 metadata = converter.extract_metadata(html)
                 markdown = converter.convert(html, base_url=fetch.final_url)
-                markdown = plugins.post_process(markdown, metadata)
                 metadata["retention_ratio"] = converter.stats.retention_ratio
                 metadata["stripped_elements"] = converter.stats.stripped_elements
                 if converter.stats.markdown_chars < 150:
@@ -930,6 +929,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                     continue
                 if archiver is not None:
                     archiver.archive(fetch, compute_bytes_hash(fetch.raw_bytes))
+                markdown = plugins.post_process(markdown, metadata)
                 document = _render_output(fetch, markdown, metadata, settings)
             except Exception as e:
                 if not quiet:

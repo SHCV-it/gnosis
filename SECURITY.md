@@ -44,3 +44,9 @@ Gnosis fetches untrusted web content and is hardened by default:
 Downloaded HTML/Markdown and documents are untrusted input. The opt-in
 `--render` path executes third-party JavaScript in a sidecar binary — only
 enable it for sources you trust, and treat rendered output as untrusted.
+
+## Plugins execute arbitrary code
+
+The `plugins:` config entry loads Python files and runs them. This is arbitrary
+local code execution by design. Only load plugin files you authored or fully
+trust — a malicious plugin can read any file, exfiltrate data, or run commands.
