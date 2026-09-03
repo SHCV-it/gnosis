@@ -14,7 +14,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import yaml
 
@@ -44,6 +44,8 @@ def _json_safe(value):
     """Coerce a YAML-parsed value to a JSON-serialisable one (dates etc.)."""
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
     if isinstance(value, (list, tuple)):
         return [_json_safe(v) for v in value]
     if isinstance(value, dict):

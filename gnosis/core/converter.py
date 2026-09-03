@@ -88,13 +88,23 @@ class HTMLToMarkdownConverter:
         for comment in soup.find_all(string=lambda s: isinstance(s, Comment)):
             comment.extract()
 
-        self.stats.source_chars = len(" ".join(soup.get_text().split()))
 
         # Remove excluded tags
+        # Remove non-visible content (JS/CSS) so the retention denominator is
+        # visible text, not script source.
+        for tag_name in ("script", "style", "noscript"):
+            for tag in soup.find_all(tag_name):
+                tag.decompose()
+
+        self.stats.source_chars = len(" ".join(soup.get_text().split()))
+
+        # Remove configured excluded tags (visible boilerplate: nav/footer/aside)
+
         for tag_name in self.settings.excluded_tags:
             for tag in soup.find_all(tag_name):
                 self.stats.stripped_elements += 1
                 tag.decompose()
+
 
         # Remove elements with excluded classes (exact token match)
         # find main content FIRST so boilerplate stripping never eats it

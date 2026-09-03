@@ -55,7 +55,7 @@ def url_to_filename(url: str) -> str:
         https://docs.openclaw.ai/start/getting-started -> docs.openclaw.ai-start-getting-started.md
     """
     parsed = urlparse(url)
-    domain = parsed.netloc.replace(":", "-")
+    domain = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "-", parsed.netloc)
 
     # Get path and clean it
     path = parsed.path.strip("/")
@@ -64,7 +64,7 @@ def url_to_filename(url: str) -> str:
         return domain
 
     # Convert path to slug; replace / and : for cross-platform filename safety
-    path_slug = path.replace("/", "-").replace(":", "-")
+    path_slug = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "-", path)
 
     base = f"{domain}-{path_slug}" if path else domain
 

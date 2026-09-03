@@ -482,3 +482,14 @@ class TestCrawl:
         assert "stripped_elements" in meta
         assert meta["stripped_elements"] >= 1
         assert meta["retention_ratio"] > 0
+
+
+def test_url_to_filename_neutralizes_separators():
+    """Regression: a malicious URL must not produce a path-traversing filename
+    (backslashes are separators on Windows)."""
+    from gnosis.cli.main import url_to_filename
+
+    name = url_to_filename("https://example.com/a\\..\\..\\evil")
+    assert "\\" not in name
+    assert "/" not in name
+    assert ":" not in name
