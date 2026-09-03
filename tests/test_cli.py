@@ -313,10 +313,14 @@ class TestSinglePage:
         mtimes = {f.name: f.stat().st_mtime for f in md_files}
         cp = json.loads((tmp_path / ".gnosis-checkpoint.json").read_text())
         assert all("bytes_sha256" in m and len(m["bytes_sha256"]) == 64 for m in cp["manifest"])
-        # second crawl: unchanged pages must NOT be rewritten
-        run_cli([f"{server}/hub", "-o", str(tmp_path), "-f", "-q", "--all"])
+        # second crawl (no -f): unchanged pages must NOT be rewritten
+        result = run_cli([f"{server}/hub", "-o", str(tmp_path), "-q", "--all"])
+        assert result.exit_code == 0, result.output
         for f in md_files:
             assert f.stat().st_mtime == mtimes[f.name]
+        # data card must NOT be clobbered empty by the unchanged re-crawl
+        card = json.loads((tmp_path / "data-card.json").read_text())
+        assert card["summary"]["pages"] == len(md_files)
 
     def test_empty_page_still_written(self, server, tmp_path):
         """Pages with minimal content should still be captured."""
