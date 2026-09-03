@@ -152,7 +152,7 @@ def test_rate_limit_per_host_not_global():
             rate_limit_ms=0, retries=0, allow_private_network=True, respect_robots=False
         )
         dl = Downloader(settings)
-        dl.settings.rate_limit_ms = 500
+        dl.settings.rate_limit_ms = 1000
         # seed the timestamp for host A so its next request must wait
         await dl._rate_limit("http://a.example/first")
 
@@ -171,5 +171,5 @@ def test_rate_limit_per_host_not_global():
         return results
 
     r = asyncio.run(_run())
-    assert r["a"] >= 0.4, f"host A did not wait: {r['a']:.3f}s"
-    assert r["b"] < 0.3, f"host B was stalled by host A's sleep: {r['b']:.3f}s"
+    assert r["a"] >= 0.8, f"host A did not wait: {r['a']:.3f}s"
+    assert r["b"] < 0.5, f"host B was stalled by host A's sleep: {r['b']:.3f}s"

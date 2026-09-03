@@ -24,7 +24,7 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e . pytest python-frontmatter
+          python -m pip install -e '.[test]'
       - name: Test
         run: python -m pytest tests/ -q
 

@@ -334,6 +334,20 @@ class TestSinglePage:
         content = next(tmp_path.glob("*.md")).read_text()
         assert "<!-- plugin-injected -->" in content
 
+    def test_sign_flag_produces_verifiable_document(self, server, tmp_path):
+        from gnosis.core.signing import generate_keypair, verify_document
+
+        priv, _ = generate_keypair()
+        keyfile = tmp_path / "key.txt"
+        keyfile.write_text(priv)
+        result = run_cli(
+            [f"{server}/page", "-o", str(tmp_path), "-f", "-q", "--sign", "--sign-key", str(keyfile)]
+        )
+        assert result.exit_code == 0
+        doc = next(tmp_path.glob("*.md")).read_text()
+        ok, _ = verify_document(doc)
+        assert ok
+
     def test_empty_page_still_written(self, server, tmp_path):
         """Pages with minimal content should still be captured."""
         result = run_cli([f"{server}/empty", "-o", str(tmp_path), "-f", "-q"])
