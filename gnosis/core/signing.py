@@ -67,13 +67,16 @@ def _json_safe(value):
     if isinstance(value, datetime):
         if value.tzinfo is None:
             value = value.replace(tzinfo=UTC)
-        return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        value = value.astimezone(UTC)
+        if value.microsecond:
+            return value.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        return value.strftime("%Y-%m-%dT%H:%M:%SZ")
     if isinstance(value, date):
         return value.isoformat()
     if isinstance(value, (list, tuple)):
         return [_json_safe(v) for v in value]
     if isinstance(value, dict):
-        return {_json_safe(k): _json_safe(v) for k, v in value.items()}
+        return {str(k): _json_safe(v) for k, v in value.items()}
     return str(value)
 
 
@@ -88,8 +91,9 @@ def canonical_manifest(markdown: str, metadata: dict) -> str:
     manifest = {
         k: _json_safe(v) for k, v in metadata.items() if k not in _SIGNATURE_FIELDS
     }
-    # The STORED content_hash is signed as-is; the body is bound independently
-    # via a recomputed hash, so tampering either one invalidates the signature.
+    # body_sha256 is reserved: a user-supplied value is ignored; the body is
+    # bound via a recomputed hash so body/content_hash tampering is caught.
+    manifest.pop("body_sha256", None)
     manifest["body_sha256"] = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
     return json.dumps(manifest, sort_keys=True, separators=(",", ":"))
 
@@ -161,7 +165,7 @@ def verify_signature(
 
 def split_frontmatter(document: str) -> tuple[dict, str]:
     """Split a rendered document into (metadata dict, markdown body)."""
-    if not document.startswith("---"):
+    if not document.startswith("---\n"):
         return {}, document
     lines = document.split("\n")
     end = None
@@ -190,7 +194,7 @@ def sign_document(document: str, private_key_pem: str) -> str:
     """
     metadata, markdown = split_frontmatter(document)
     sig = sign_manifest(markdown, metadata, private_key_pem)
-    if not document.startswith("---"):
+    if not document.startswith("---\n"):
         front = yaml.safe_dump(sig, sort_keys=False).rstrip("\n")
         return f"---\n{front}\n---\n\n{document}"
     lines = document.split("\n")

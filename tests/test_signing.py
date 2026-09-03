@@ -286,3 +286,32 @@ def test_block_scalar_not_missplit(keypair):
     assert "signature: not-a-sig" in signed  # block scalar content preserved
     ok, _ = verify_document(signed, expected_public_key=public_b64)
     assert ok
+
+
+def test_fractional_seconds_preserved(keypair):
+    """Regression (#52): sub-second datetime tampering must invalidate."""
+    from datetime import UTC, datetime
+
+    from gnosis.core.signing import _json_safe
+
+    assert "2026-09-03T00:00:00.123456Z" == _json_safe(
+        datetime(2026, 9, 3, 0, 0, 0, 123456, tzinfo=UTC)
+    )
+    assert "2026-09-03T00:00:00Z" == _json_safe(datetime(2026, 9, 3, 0, 0, 0, 0, tzinfo=UTC))
+
+
+def test_non_string_dict_keys_coerced(keypair):
+    """Regression (#54): mixed-type YAML keys must not crash canonical_manifest."""
+    from gnosis.core.signing import _json_safe
+
+    out = _json_safe({1: "a", "url": "x", 2.5: "b"})
+    assert out == {"1": "a", "url": "x", "2.5": "b"}
+
+
+def test_horizontal_rule_not_frontmatter(keypair):
+    """Regression (#55): a leading horizontal rule (----) must not be treated
+    as a frontmatter fence."""
+    doc = "----\n\n# Body\n"
+    metadata, body = split_frontmatter(doc)
+    assert metadata == {}
+    assert body == doc
