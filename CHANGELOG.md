@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.0] - 2026-09-03
+
+### Fixed
+- Windows path traversal in `url_to_filename` (backslash + control-char sanitisation)
+- `retention_ratio` denominator now excludes non-visible JS/CSS (script/style/noscript)
+- signing canonicalisation uses `isoformat()` for dates (stable across PyYAML versions)
+- ai.txt `User-Agent` group scoping (most-specific group, `*` fallback)
+- consent cache cleared per invocation (no cross-job leakage)
+- test port flakiness (`allow_reuse_address` + `server_close`)
+
+### Docs
+- README notes root-only `ai.txt`/`llms.txt` probing as a known limitation
+
 ## [2.0.1] - 2026-09-03
 
 ### Fixed
