@@ -249,6 +249,7 @@ class Settings:
     qmd: QMDSettings = field(default_factory=QMDSettings)
     render: RenderSettings = field(default_factory=RenderSettings)
     policies: list = field(default_factory=list)
+    plugins: list = field(default_factory=list)
 
 
 def load_config(config_path: Optional[Path] = None) -> Settings:
@@ -374,6 +375,11 @@ def load_config(config_path: Optional[Path] = None) -> Settings:
         )
 
     settings.policies = data.get("policies") or []
+    _plugins = data.get("plugins") or []
+    settings.plugins = [
+        str((config_path.parent / pp).resolve()) if not Path(pp).is_absolute() else pp
+        for pp in _plugins
+    ]
     return settings
 
 

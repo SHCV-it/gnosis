@@ -238,3 +238,9 @@ render:
 #     deny_if:
 #       ai_txt: { training: Deny }
 #     reason: "site prohibits AI training"
+
+# Plugin hooks: list of Python files. Each may define pre_fetch(url, headers),
+# post_fetch(fetch), post_process(markdown, metadata). WARNING: plugins are
+# arbitrary local code — only load files you trust (see SECURITY.md).
+# plugins:
+#   - /path/to/my_hooks.py

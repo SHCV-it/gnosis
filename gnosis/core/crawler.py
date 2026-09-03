@@ -32,6 +32,7 @@ class Crawler:
         self,
         settings: Optional[CrawlerSettings] = None,
         downloader: Optional[Downloader] = None,
+        pre_fetch=None,
     ):
         """
         Initialize the crawler.
@@ -43,6 +44,7 @@ class Crawler:
         self.settings = settings or CrawlerSettings()
         self.downloader = downloader or Downloader()
         self.failed: list[tuple[str, str]] = []
+        self._pre_fetch = pre_fetch
 
     async def discover_pages(self, start_url: str) -> Tuple[int, list[str], bool]:
         """
@@ -144,7 +146,13 @@ class Crawler:
                 break
 
             # Fetch the batch in parallel; exceptions are caught per-page
-            tasks = [self.downloader.fetch_result(url) for url, _ in batch]
+            async def _fetch(u: str):
+                if self._pre_fetch is not None:
+                    new_url, headers = self._pre_fetch(u, {})
+                    return await self.downloader.fetch_result(new_url, headers)
+                return await self.downloader.fetch_result(u)
+
+            tasks = [_fetch(url) for url, _ in batch]
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
             for (url, depth), result in zip(batch, results):
