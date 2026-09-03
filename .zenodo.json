@@ -1,0 +1,36 @@
+{
+  "upload_type": "software",
+  "access_right": "open",
+  "license": "MIT",
+  "creators": [
+    {
+      "name": "Steffen Hoehne",
+      "affiliation": "SHCV.IT"
+    },
+    {
+      "name": "Ali Zahid Raja",
+      "affiliation": "SHCV.IT"
+    }
+  ],
+  "title": "gnosis: web scraping to LLM-ready Markdown with byte-level provenance",
+  "description": "gnosis fetches and crawls web pages and converts them to clean, LLM/RAG-ready Markdown with byte-level provenance: SHA-256 over the raw response bytes, WARC archival, a content-addressed store, an IP-pinned SSRF guard, token-aware chunking with citation spans, ai.txt/llms.txt consent recording, a compliance policy engine, Ed25519 signing (seal of origin), multi-format export (JSON/JSONL/Parquet), an MCP server, and plugin hooks. Its thesis: Markdown is a projection; the raw bytes + WARC are the source of truth.",
+  "keywords": [
+    "web-scraping",
+    "markdown",
+    "provenance",
+    "llm",
+    "rag",
+    "warc",
+    "ssrf",
+    "ed25519",
+    "data-engineering",
+    "ai"
+  ],
+  "version": "2.0.0",
+  "related_identifiers": [
+    {
+      "relation": "isSupplementTo",
+      "identifier": "https://github.com/SHCV-it/gnosis"
+    }
+  ]
+}
