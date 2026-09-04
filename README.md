@@ -97,8 +97,9 @@ The provenance claim is the product. After a fetch:
 ```bash
 gnosis https://docs.python.org/3/tutorial/ -o out/ --warc
 
-# The frontmatter's bytes_sha256 is the SHA-256 of the response body bytes (after content decoding):
-shasum -a 256 out/.gnosis-store/<bytes_sha256>   # matches the hash in the .md
+# One command: extract the hash from the frontmatter and re-verify the stored body.
+h=$(sed -n 's/^bytes_sha256: *//p' out/*.md | head -1); printf '%s  %s\n' "$h" "out/.gnosis-store/$h" | shasum -a 256 -c -
+# prints: <hash>: OK
 ```
 
 Every markdown file is re-fetchable and re-verifiable — no sidecar bookkeeping.
