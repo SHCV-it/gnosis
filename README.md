@@ -27,6 +27,12 @@ archival, and Ed25519 signatures you can verify independently.
   <img src="https://raw.githubusercontent.com/SHCV-it/gnosis/main/docs/demo.gif" alt="gnosis in action" width="720">
 </p>
 
+> **Known limitations, stated plainly:** `retention_ratio` measures *how much*
+> text survived extraction, not *which* text (a single dropped table in a long
+> document barely moves it — see §4.4 of the spec). JS rendering is opt-in via
+> a sidecar. The SSRF guard covers direct connections, not proxies. Full
+> disclosure in [SECURITY.md](https://github.com/SHCV-it/gnosis/blob/main/SECURITY.md).
+
 ## Why gnosis-markdown
 
 **The citation/provenance layer for LLM pipelines — not another scraper.**

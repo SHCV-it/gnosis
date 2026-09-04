@@ -1,0 +1,7 @@
+{
+  "name": "gnosis",
+  "description": "Fetch web pages as Markdown with a verifiable provenance record: source URL, UTC timestamp, SHA-256 of the response body, extraction fidelity, optional WARC archive. Honours robots.txt.",
+  "maintainers": ["Ali Zahid Raja", "Steffen Hoehne"],
+  "repository": "https://github.com/SHCV-it/gnosis",
+  "license": "MIT"
+}
