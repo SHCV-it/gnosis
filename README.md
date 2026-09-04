@@ -1,9 +1,18 @@
-# Gnosis — Web Scraping → Markdown for LLMs (RAG-ready, byte-level provenance)
+# gnosis-markdown
 
-<p align="center">
-  <strong>The auditable web scraper that turns the internet into LLM-ready knowledge.</strong><br>
-  Open-source · Self-hostable · Byte-level SHA-256 · WARC archival · MIT
-</p>
+**Prove where every document came from.**
+
+*Web → clean, RAG-ready Markdown — with proof of origin baked into every byte.*
+
+> **Markdown is a projection; the raw bytes + WARC are the source of truth.**
+
+For **RAG engineers**, **compliance & data-governance teams**, and
+**security-sensitive researchers** who need to *prove* — not just assume —
+where a document came from, gnosis-markdown fetches and crawls any page into
+LLM-ready Markdown while stamping every file with byte-level SHA-256, WARC
+archival, and Ed25519 signatures you can verify independently.
+
+**Byte-level provenance. Re-fetchable. Re-verifiable. No sidecar bookkeeping.**
 
 <p align="center">
   <a href="https://pypi.org/project/gnosis-markdown/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/gnosis-markdown?color=blue"></a>
@@ -14,37 +23,54 @@
   <a href="https://doi.org/10.5281/zenodo.22276101"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.22276101.svg"></a>
 </p>
 
-**Gnosis** is an open-source web scraper and crawler that downloads websites
-(and documents) and converts them into clean, LLM-friendly Markdown for RAG
-pipelines and knowledge bases — with a **YAML provenance block on every file**
-recording where the bytes came from, when they were fetched, and how to verify
-them. It is the *auditable* web-to-Markdown converter.
-
-> **Markdown is a projection; the raw bytes + WARC are the source of truth.**
-> Unlike Firecrawl, Crawl4AI, or Jina Reader, gnosis ships byte-level SHA-256
-> and WARC-grade evidence out of the box.
-
 <p align="center">
   <img src="https://raw.githubusercontent.com/SHCV-it/gnosis/main/docs/demo.gif" alt="gnosis in action" width="720">
 </p>
 
-## Why Gnosis
+## Why gnosis-markdown
 
-| Feature | Gnosis | Firecrawl | Crawl4AI | Jina Reader |
+**The citation/provenance layer for LLM pipelines — not another scraper.**
+
+You can scrape the web with a dozen tools. You can only *prove* where a
+document came from with one. gnosis-markdown turns every fetch into an
+auditable **Capture Record**: hash the bytes, archive the raw response, record
+the consent signals, and sign the result — so the document in your RAG index is
+traceable to the bytes on the wire.
+
+Firecrawl, Crawl4AI and Jina Reader win on speed, scale and hosting.
+gnosis-markdown doesn't compete there — it wins on **auditability**, the one
+axis none of them ship as a first-class feature.
+
+### The honest comparison
+
+This table is deliberately **not** a feature matrix. It claims only the
+provenance / audit / consent / signing surface gnosis-markdown ships in its own
+tree — and nothing about speed, scale, or hosting, where we do *not* claim to
+compete.
+
+| Audit-surface capability | gnosis-markdown | Firecrawl | Crawl4AI | Jina Reader |
 | --- | --- | --- | --- | --- |
-| Clean Markdown | ✅ | ✅ | ✅ | ✅ |
-| JS rendering | ✅ opt-in | ✅ | ✅ | ✅ |
-| **Byte-level SHA-256 provenance** | ✅ | ❌ | ❌ | ❌ |
-| **WARC archival (replay via pywb)** | ✅ | ❌ | ❌ | ❌ |
-| **Ed25519 signed records (seal of origin)** | ✅ | ❌ | ❌ | ❌ |
-| **ai.txt consent recording + policy engine** | ✅ | ❌ | ❌ | ❌ |
-| **Built-in SSRF / private-network guard** | ✅ | ⚠️ | ❌ | ❌ |
-| robots.txt + politeness | ✅ | ⚠️ | ⚠️ | ❌ |
-| Self-hostable / offline | ✅ | ✅ | ✅ | ✅ |
-| License | MIT | AGPL-3.0 | Apache-2.0 | MIT |
+| `bytes_sha256` — SHA-256 of the response body bytes | ✅ | ❌ | ❌ | ❌ |
+| `content_hash` — SHA-256 of the derived Markdown | ✅ | ⚠️ | ⚠️ | ❌ |
+| WARC archival + content-addressed store (replay via pywb) | ✅ | ❌ | ❌ | ❌ |
+| Ed25519 seal of origin (sign + pinned-key verify) | ✅ | ❌ | ❌ | ❌ |
+| ai.txt / llms.txt consent recording per fetch | ✅ | ❌ | ❌ | ❌ |
+| Deny-overrides compliance policy engine + `--profile` presets | ✅ | ❌ | ❌ | ❌ |
+| IP-pinned SSRF guard (closes DNS-rebinding TOCTOU) | ✅ | ➖ | ❌ | ➖ |
+| Per-job Data Card (`data-card.json`) | ✅ | ❌ | ❌ | ❌ |
+| Versioned, machine-readable Capture Record spec | ✅ | ❌ | ❌ | ❌ |
 
-✅ yes · ⚠️ partial · ❌ no — *as of September 2026; verify each project's
-current capabilities and license against its own repository.*
+**Legend:** ✅ first-class, shipped in-tree and verifiable · ⚠️ partial / not the
+same thing · ❌ not offered as a documented feature · ➖ opaque (managed service;
+behavior not verifiable in a self-hosted deployment).
+
+*As of September 2026. gnosis-markdown claims are verifiable against this
+repository (`--sign`, `--warc`, `--profile`, `gnosis-keygen`, `gnosis-verify`).
+Competitor columns reflect their public docs at time of writing — re-verify
+each project against its own repository before relying on this table.
+Firecrawl and Jina Reader are hosted services: some server-side behavior
+(e.g. SSRF handling) exists but cannot be verified by a third party in a
+self-hosted build, hence ➖.*
 
 ## Verify it yourself
 
@@ -74,11 +100,14 @@ gnosis https://docs.python.org/3/tutorial/
 # Crawl an entire section
 gnosis https://docs.python.org/3/tutorial/ --all -o ./python-docs/
 
-# Archive the raw bytes to WARC + a content-addressed store
-gnosis https://docs.python.org/3/tutorial/ --warc
+# Archive the raw bytes to WARC + a content-addressed store, and sign the record
+gnosis https://docs.python.org/3/tutorial/ --warc --sign --sign-key key.pem
 
 # Emit per-chunk citation manifests for RAG
 gnosis https://docs.example.com --chunk
+
+# Export with provenance (JSON / JSONL / Parquet)
+gnosis https://docs.example.com --format json
 
 # Evaluate yourself against a corpus (one URL per line)
 printf 'https://docs.python.org/3/\nhttps://example.com/\n' > urls.txt
@@ -94,66 +123,83 @@ gnosis-doc report.pdf -o report.md
 
 ## Features
 
-**Provenance & audit (the moat)**
-- YAML frontmatter on every file: `url`, `fetched_at` (UTC), `status_code`,
-  `etag`, `last_modified`, `generator`, and `requested_url` (when redirected).
-- **`content_hash`** (SHA-256 of the markdown) *and* **`bytes_sha256`** (SHA-256
-  of the response body bytes, after content decoding) — hash the bytes, not the derived text.
-- **WARC export** (`--warc`) + a content-addressed store keyed on `bytes_sha256`.
-- `llms.txt` + `llms-full.txt` emitted on every crawl.
-- **ai.txt consent discovery** — the host's `ai.txt` directives and `llms.txt`
-  presence are recorded in the frontmatter (`ai_txt` / `llms_txt`).
+### Provenance & audit — the moat
 
-> **ai.txt is advisory, not enforced.** gnosis probes only root-level
-> `/ai.txt` and `/llms.txt` (path-scoped files are a known limitation), records
-> the directives it finds, and does not, by default, refuse to scrape. To stop
-> scraping at opt-outs, use `--profile strict-optout` or an explicit `deny_if`
-> rule.
+- **`bytes_sha256`** — SHA-256 of the response body bytes (after content
+  decoding). You hash the bytes, not the derived text.
+- **`content_hash`** — SHA-256 of the emitted Markdown, so transforms are
+  auditable too.
+- **WARC archival** (`--warc`) — WARC-grade evidence, replayable via pywb, plus
+  a content-addressed store keyed on `bytes_sha256`. Every file is re-fetchable
+  and re-verifiable — no sidecar bookkeeping.
+- **Ed25519 signing — seal of origin** — `--sign` cryptographically signs each
+  record; `gnosis-keygen` mints keypairs and `gnosis-verify` checks them against
+  a pinned key. Prove a document came from a capture you made, untouched.
+- **Data cards** — every scrape/crawl job writes a `data-card.json`: sources,
+  sizes, licenses encountered, ai.txt/llms.txt coverage, and compliance
+  decisions — one artifact an auditor reads instead of opening every file.
 
-> **ai.txt is advisory, not enforced.** gnosis *records* a site's ai.txt
-> opt-out (`Training: Deny`) in the frontmatter but does not, by default,
-> refuse to scrape it. If you want scraping to *stop* at opt-outs, enable a
-> policy: `--profile strict-optout` or write an explicit `deny_if` rule.
-> "We record the opt-out and scrape anyway" is exactly the behavior a
-> regulator will ask about — decide it deliberately, don't let it be a default.
+### Consent & compliance policy
 
-**Fetching & access**
-- Static-first async fetch (`httpx`); optional JS rendering via a sidecar binary.
-- **robots.txt** respected (with `Crawl-delay` politeness); fail-open on errors.
-- **SSRF / private-network guard**: blocks loopback/RFC1918/link-local/multicast
-  and every redirect hop (opt out with `--allow-private-network`).
-- Auth: Bearer, HTTP Basic (Confluence PAT), and custom headers. Reference
-  secrets as `${ENV_VAR}` (supported in config and `--header` values) and keep
-  them out of config files and shell history.
+- **ai.txt / llms.txt consent recording** — a host's `ai.txt` directives and
+  `llms.txt` presence are captured into the frontmatter of every affected file.
+- **Compliance policy engine** — per-page `allow_if` / `deny_if` rules with
+  **deny-overrides** semantics, matched on license, ai.txt directives, and URL
+  path. Decisions are recorded in the frontmatter and data card, not just
+  applied.
+- **`--profile` presets** — `strict-optout` (block training/data opt-outs and
+  `Disallow:` paths) and `open-only` (permissive/open licenses only).
 
-**Extraction & output**
-- Main-content detection + class-word boilerplate stripping.
-- Valid GFM tables (multi-para cells, pipe escaping, sticky-header dedup).
-- Metadata extraction (title/author/language/description/Open Graph).
-- **Chunking** (`--chunk`) with stable chunk ids + heading paths + offsets.
-- Resumable crawls (`--all`) via a content-hash checkpoint.
+> **ai.txt is advisory, not enforced by default.** gnosis *records* a site's
+> ai.txt opt-out but does not, by default, refuse to scrape. To stop scraping
+> at opt-outs, use `--profile strict-optout` or an explicit `deny_if` rule.
+> "We record the opt-out and scrape anyway" is exactly the behavior a regulator
+> will ask about — decide it deliberately.
 
-### Chunk manifest example
+### Security
 
-`gnosis https://docs.example.com --chunk` writes `<page>.md.chunks.json`:
+- **IP-pinned SSRF guard** — blocks loopback, RFC1918, link-local, multicast,
+  CGNAT/6to4/Teredo/NAT64, and every redirect hop — closing the DNS-rebinding
+  TOCTOU by resolving once, validating every address, and dialing only pinned
+  IPs (TLS SNI still uses the hostname, so pinning never weakens TLS).
+- **robots.txt + politeness** respected (per-host rate limiting, `Crawl-delay`
+  capped), fail-open on errors.
+- Auth/custom headers are sent only to the original origin — never replayed to
+  cross-origin redirect targets.
+- Secrets via `${ENV_VAR}` — keep credentials out of config files and shell history.
 
-```json
-[
-  {
-    "doc_id": "https://docs.example.com",
-    "content_hash": "1549512c...",
-    "chunk_id": "c0",
-    "heading_path": ["Title"],
-    "start": 0,
-    "end": 812,
-    "char_count": 812
-  }
-]
-```
+### Extraction & output
+
+- Clean, main-content Markdown with valid GFM tables, metadata extraction, and
+  boilerplate stripping — plus a `retention_ratio` / `stripped_elements` /
+  `low_content` audit trail over the transform itself.
+- **Token-aware chunking** (`--chunk`) — stable chunk IDs, heading paths, and
+  exact byte offsets in a per-page `.chunks.json` citation manifest.
+- **Multi-format export** — `--format json|jsonl|parquet`, each record carrying
+  full provenance.
+- **`llms.txt` / `llms-full.txt` emission** on every crawl.
+
+### Crawling at scale
+
+- **Incremental crawl + conditional GET** — `If-None-Match` / `304` skip
+  unchanged downloads; a hash-native checkpoint makes `--all` **resumable**,
+  growing past `max_pages` across runs.
+
+### Integrations
+
+- **MCP server** (`gnosis-mcp`) — expose gnosis as an MCP `fetch_and_convert`
+  tool that returns provenance-stamped Markdown (`[mcp]` extra).
+- **LlamaIndex reader** and **LangChain document loader** — return provenance-
+  stamped `Document`s (`[llamaindex]` / `[langchain]` extras).
+- **Plugin hooks** — `pre_fetch` / `post_fetch` / `post_process` for custom
+  auth, filtering, and post-processing.
+- **Companion CLIs** — `gnosis-bench` (reproducible scorecard), `gnosis-doc`
+  (PDF/Office → Markdown), `gnosis-keygen` / `gnosis-verify` (signing).
 
 ## Provenance: the contract
 
-The full machine-readable contract — every field, its exact semantics, and conformance rules — is in the [Capture Record Specification](https://github.com/SHCV-it/gnosis/blob/main/docs/capture-record-spec.md).
+The full machine-readable contract — every field, its exact semantics, and
+conformance rules — is in the [Capture Record Specification](https://github.com/SHCV-it/gnosis/blob/main/docs/capture-record-spec.md).
 
 ```yaml
 ---
@@ -210,9 +256,14 @@ Also available: **`gnosis-bench`** (reproducible scorecard), **`gnosis-doc`**
 ## Installation
 
 ```bash
-pip install gnosis-markdown          # core
-pip install gnosis-markdown[qmd]     # optional QMD vector-DB indexing
-pip install gnosis-markdown[docs]    # optional document conversion (MarkItDown)
+pip install gnosis-markdown                  # core
+pip install 'gnosis-markdown[sign]'          # Ed25519 signing (cryptography)
+pip install 'gnosis-markdown[parquet]'       # Parquet export (pyarrow)
+pip install 'gnosis-markdown[mcp]'           # MCP server
+pip install 'gnosis-markdown[llamaindex]'    # LlamaIndex reader
+pip install 'gnosis-markdown[langchain]'     # LangChain loader
+pip install 'gnosis-markdown[docs]'          # document conversion (MarkItDown)
+pip install 'gnosis-markdown[qmd]'           # QMD vector-DB indexing
 ```
 
 Requires **Python 3.12+**. See
