@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.3.0] - 2026-09-04
+
+### Fixed
+- conditional GET (304) actually works — a 304 is now returned before the body
+  read, instead of raising (the crawler branch was dead code)
+- robots.txt `Crawl-delay` capped at 60s (indefinite-stall DoS guard)
+- `content_hash` hashes the exact stored body, so `--sign` + a post_process
+  plugin no longer produces a self-invalid document
+- streaming response-body cap (chunked responses can no longer exhaust memory)
+- `bytes_sha256` wording aligned with the spec (decoded body, not wire bytes)
+
+### Added
+- LlamaIndex reader + LangChain document loader (`[llamaindex]` / `[langchain]`)
+- Dockerfile for container distribution
+- CoC enforcement ladder; publish version==tag guard
+
+### Docs
+- README + docs landing rewrite: benefit-first hero, honest comparison table,
+  full v2 feature story; demo + BENCHMARKS regenerated
+
 ## [2.2.0] - 2026-09-03
 
 ### Security
