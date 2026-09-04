@@ -8,7 +8,7 @@ title: Quickstart
 url: https://docs.example.com/quickstart
 fetched_at: '2026-09-02T08:41:44Z'
 content_hash: 1549512c...16fd     # SHA-256 of the markdown body
-bytes_sha256: 85052df6...bcb31    # SHA-256 of the raw response bytes
+bytes_sha256: 85052df6...bcb31    # SHA-256 of the response body bytes
 status_code: 200
 generator: gnosis/2.2.0
 retention_ratio: 0.9137          # surviving text / source text (0..1)
@@ -22,7 +22,7 @@ last_modified: Fri, 31 Jul 2026 16:07:37 GMT
 Two hashes, two jobs:
 
 - **`content_hash`** — SHA-256 of the derived Markdown (dedup/change detection).
-- **`bytes_sha256`** — SHA-256 of the raw response-body bytes (the *audit* hash).
+- **`bytes_sha256`** — SHA-256 of the response body bytes, after content decoding (the *audit* hash).
 
 The frontmatter is standard YAML, parseable by `python-frontmatter`, Jekyll,
 Hugo, Obsidian, and any downstream pipeline.

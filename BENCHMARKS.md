@@ -22,7 +22,7 @@ The JSON report is machine-readable and records, per URL: HTTP status, latency,
 raw byte count, markdown character count, and whether **provenance is complete**
 (`bytes_sha256` + `content_hash` + WARC record present).
 
-## Latest scorecard (v1.4.1, 2026-09-02)
+## Latest scorecard (v2.2.0, 2026-09-03)
 
 | Metric | Value |
 |---|---|
@@ -49,7 +49,7 @@ raw byte count, markdown character count, and whether **provenance is complete**
 For every successful fetch gnosis writes, in the frontmatter of the output
 Markdown:
 
-- `bytes_sha256` — SHA-256 of the **raw response bytes** (not derived markdown)
+- `bytes_sha256` — SHA-256 of the **response body bytes** (after content decoding; not derived markdown)
 - `content_hash` — SHA-256 of the markdown body
 - `fetched_at`, `status_code`, `url`, `generator`
 - optional `retention_ratio`, `stripped_elements`, `low_content`

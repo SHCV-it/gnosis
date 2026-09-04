@@ -53,7 +53,7 @@ The provenance claim is the product. After a fetch:
 ```bash
 gnosis https://docs.python.org/3/tutorial/ -o out/ --warc
 
-# The frontmatter's bytes_sha256 is the SHA-256 of the raw response:
+# The frontmatter's bytes_sha256 is the SHA-256 of the response body bytes (after content decoding):
 shasum -a 256 out/.gnosis-store/<bytes_sha256>   # matches the hash in the .md
 ```
 
@@ -98,7 +98,7 @@ gnosis-doc report.pdf -o report.md
 - YAML frontmatter on every file: `url`, `fetched_at` (UTC), `status_code`,
   `etag`, `last_modified`, `generator`, and `requested_url` (when redirected).
 - **`content_hash`** (SHA-256 of the markdown) *and* **`bytes_sha256`** (SHA-256
-  of the raw response-body bytes) — hash the bytes, not the derived text.
+  of the response body bytes, after content decoding) — hash the bytes, not the derived text.
 - **WARC export** (`--warc`) + a content-addressed store keyed on `bytes_sha256`.
 - `llms.txt` + `llms-full.txt` emitted on every crawl.
 - **ai.txt consent discovery** — the host's `ai.txt` directives and `llms.txt`
@@ -161,7 +161,7 @@ title: Quickstart
 url: https://docs.example.com/quickstart
 fetched_at: '2026-09-02T08:41:44Z'
 content_hash: 1549512c...16fd     # SHA-256 of the markdown body
-bytes_sha256: 85052df6...bcb31    # SHA-256 of the raw response bytes
+bytes_sha256: 85052df6...bcb31    # SHA-256 of the response body bytes
 status_code: 200
 generator: gnosis/2.2.0
 etag: '"61e917f4..."'
