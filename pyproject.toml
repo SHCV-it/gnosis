@@ -57,6 +57,12 @@ mcp = [
 parquet = [
     "pyarrow>=14",
 ]
+llamaindex = [
+    "llama-index-core>=0.10",
+]
+langchain = [
+    "langchain-core>=0.2",
+]
 test = [
     "pytest>=8.0.0",
     "python-frontmatter>=1.0.0",

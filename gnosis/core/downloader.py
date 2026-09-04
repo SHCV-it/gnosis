@@ -197,48 +197,56 @@ class Downloader:
                         if extra_headers:
                             hop_headers.update(extra_headers)
 
-                    response = await client.get(current, headers=hop_headers or None)
+                    async with client.stream("GET", current, headers=hop_headers or None) as response:
+                        if response.has_redirect_location:
+                            location = response.headers.get("location") or ""
+                            chain.append(current)
+                            current = urljoin(current, location)
+                            if len(chain) > max_redirects:
+                                raise DownloadError(f"too many redirects: {url}")
+                            continue
 
-                    if response.has_redirect_location:
-                        location = response.headers.get("location") or ""
-                        chain.append(current)
-                        current = urljoin(current, location)
-                        if len(chain) > max_redirects:
-                            raise DownloadError(f"too many redirects: {url}")
-                        continue
-
-                    if response.status_code == 304:
+                        if response.status_code == 304:
+                            chain.append(str(response.url))
+                            return FetchResult(
+                                url=url,
+                                final_url=str(response.url),
+                                status_code=304,
+                                html="",
+                                fetched_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                response_headers={k.lower(): v for k, v in response.headers.items()},
+                                raw_bytes=b"",
+                                content_type="",
+                                redirect_chain=chain,
+                            )
+                        response.raise_for_status()
+                        content_length = response.headers.get("content-length")
+                        if content_length and content_length.isdigit() and int(content_length) > MAX_BODY_BYTES:
+                            raise DownloadError(f"response body too large: {content_length} bytes")
+                        # stream-read with a hard cap so a chunked (no Content-Length)
+                        # response cannot exhaust memory
+                        chunks: list[bytes] = []
+                        total = 0
+                        async for chunk in response.aiter_bytes():
+                            total += len(chunk)
+                            if total > MAX_BODY_BYTES:
+                                raise DownloadError(f"response body too large (>{MAX_BODY_BYTES} bytes)")
+                            chunks.append(chunk)
+                        raw = b"".join(chunks)
+                        encoding = response.encoding or "utf-8"
+                        html = raw.decode(encoding, errors="replace")
                         chain.append(str(response.url))
                         return FetchResult(
                             url=url,
                             final_url=str(response.url),
-                            status_code=304,
-                            html="",
+                            status_code=response.status_code,
+                            html=html,
                             fetched_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
                             response_headers={k.lower(): v for k, v in response.headers.items()},
-                            raw_bytes=b"",
-                            content_type="",
+                            raw_bytes=raw,
+                            content_type=response.headers.get("content-type", ""),
                             redirect_chain=chain,
                         )
-                    response.raise_for_status()
-                    content_length = response.headers.get("content-length")
-                    if content_length and content_length.isdigit() and int(content_length) > MAX_BODY_BYTES:
-                        raise DownloadError(f"response body too large: {content_length} bytes")
-                    chain.append(str(response.url))
-                    raw = response.content
-                    if len(raw) > MAX_BODY_BYTES:
-                        raise DownloadError(f"response body too large ({len(raw)} bytes)")
-                    return FetchResult(
-                        url=url,
-                        final_url=str(response.url),
-                        status_code=response.status_code,
-                        html=response.text,
-                        fetched_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                        response_headers={k.lower(): v for k, v in response.headers.items()},
-                        raw_bytes=raw,
-                        content_type=response.headers.get("content-type", ""),
-                        redirect_chain=chain,
-                    )
 
             except httpx.HTTPStatusError as e:
                 last_error = e
