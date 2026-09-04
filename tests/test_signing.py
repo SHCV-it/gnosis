@@ -315,3 +315,21 @@ def test_horizontal_rule_not_frontmatter(keypair):
     metadata, body = split_frontmatter(doc)
     assert metadata == {}
     assert body == doc
+
+
+def test_sign_plugin_trailing_whitespace_verifies():
+    """Regression (panel C1): a plugin that appends trailing whitespace must
+    still produce a document that verifies (content_hash matches stored body)."""
+    from gnosis.core.downloader import FetchResult
+    from gnosis.core.provenance import build_frontmatter, render_document
+
+    priv, pub = generate_keypair()
+    markdown = "Hello **world**\n\n<!-- plugin-injected -->"
+    fetch = FetchResult(
+        url="https://x", final_url="https://x", status_code=200, html="",
+        fetched_at="2026-09-03T00:00:00Z", raw_bytes=b"", content_type="text/html",
+    )
+    doc = render_document(build_frontmatter(fetch, markdown, {}), markdown)
+    signed = sign_document(doc, priv)
+    ok, _ = verify_document(signed, expected_public_key=pub)
+    assert ok

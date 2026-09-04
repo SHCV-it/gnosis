@@ -618,7 +618,7 @@ def _page_record(fetch, markdown: str, metadata: dict) -> dict:
         "status_code": fetch.status_code,
         "raw_bytes": len(fetch.raw_bytes),
         "markdown_chars": len(markdown),
-        "content_hash": compute_content_hash(markdown),
+        "content_hash": compute_content_hash(markdown.rstrip() + "\n"),
         "bytes_sha256": compute_bytes_hash(fetch.raw_bytes),
         "retention_ratio": metadata.get("retention_ratio"),
         "stripped_elements": metadata.get("stripped_elements"),
@@ -740,7 +740,7 @@ async def download_and_convert(
 
     output_path.write_text(document, encoding="utf-8")
     if settings.output.chunk:
-        _write_chunk_manifest(markdown, compute_content_hash(markdown), output_path, fetch.final_url)
+        _write_chunk_manifest(markdown, compute_content_hash(markdown.rstrip() + "\n"), output_path, fetch.final_url)
     write_data_card(
         output_dir,
         [_page_record(fetch, markdown, metadata)],
@@ -752,7 +752,7 @@ async def download_and_convert(
     if not quiet:
         console.print(f"[green]✓[/green] Saved: {output_path}")
         if verbose:
-            console.print(f"[dim]    sha256: {compute_content_hash(markdown)[:16]}…  "
+            console.print(f"[dim]    sha256: {compute_content_hash(markdown.rstrip() + "\n")[:16]}…  "
                           f"status: {fetch.status_code}  fetched: {fetch.fetched_at}[/dim]")
 
     # Run QMD integration if enabled
@@ -951,7 +951,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                     metadata["low_content"] = True
                 if not markdown.strip():
                     raise ValueError("conversion produced empty output")
-                content_hash = compute_content_hash(markdown)
+                content_hash = compute_content_hash(markdown.rstrip() + "\n")
                 if content_hash in seen_hashes:
                     duplicate_count += 1
                     if not quiet:
@@ -987,7 +987,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
                 markdown = plugins.post_process(markdown, metadata)
                 # content_hash must reflect the FINAL (post-plugin) body so the
                 # crawl manifest matches each file's frontmatter hash.
-                content_hash = compute_content_hash(markdown)
+                content_hash = compute_content_hash(markdown.rstrip() + "\n")
                 document = _render_output(fetch, markdown, metadata, settings)
             except Exception as e:
                 if not quiet:
@@ -1009,7 +1009,7 @@ async def crawl_and_convert(url: str, settings: Settings, quiet: bool, verbose: 
 
             output_path.write_text(document, encoding="utf-8")
             if settings.output.chunk:
-                _write_chunk_manifest(markdown, compute_content_hash(markdown), output_path, page_url)
+                _write_chunk_manifest(markdown, compute_content_hash(markdown.rstrip() + "\n"), output_path, page_url)
             saved_count += 1
             page_records.append(_page_record(fetch, markdown, metadata))
             if fmt:

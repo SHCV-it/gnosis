@@ -140,6 +140,7 @@ class Downloader:
             key = urlparse(url).hostname or urlparse(url).netloc
             crawl_delay = await self._robots.crawl_delay(url)
             if crawl_delay:
+                crawl_delay = min(crawl_delay, 60)  # cap (robots.txt DoS guard)
                 delay_ms = max(delay_ms, int(crawl_delay * 1000))
         if delay_ms <= 0:
             return
@@ -206,11 +207,27 @@ class Downloader:
                             raise DownloadError(f"too many redirects: {url}")
                         continue
 
+                    if response.status_code == 304:
+                        chain.append(str(response.url))
+                        return FetchResult(
+                            url=url,
+                            final_url=str(response.url),
+                            status_code=304,
+                            html="",
+                            fetched_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                            response_headers={k.lower(): v for k, v in response.headers.items()},
+                            raw_bytes=b"",
+                            content_type="",
+                            redirect_chain=chain,
+                        )
                     response.raise_for_status()
                     content_length = response.headers.get("content-length")
                     if content_length and content_length.isdigit() and int(content_length) > MAX_BODY_BYTES:
                         raise DownloadError(f"response body too large: {content_length} bytes")
                     chain.append(str(response.url))
+                    raw = response.content
+                    if len(raw) > MAX_BODY_BYTES:
+                        raise DownloadError(f"response body too large ({len(raw)} bytes)")
                     return FetchResult(
                         url=url,
                         final_url=str(response.url),
@@ -218,7 +235,7 @@ class Downloader:
                         html=response.text,
                         fetched_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
                         response_headers={k.lower(): v for k, v in response.headers.items()},
-                        raw_bytes=response.content,
+                        raw_bytes=raw,
                         content_type=response.headers.get("content-type", ""),
                         redirect_chain=chain,
                     )

@@ -370,3 +370,46 @@ def test_effective_headers():
     assert h["User-Agent"] == "UA/1.0"
     assert h["X-Custom"] == "v"
     assert h["Authorization"] == "Bearer t"
+
+
+def test_304_returns_status_not_error():
+    """Regression (judge P0): a 304 must be returned as a FetchResult, not raise."""
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    class H(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.headers.get("If-None-Match") == '"abc"':
+                self.send_response(304)
+                self.end_headers()
+            else:
+                body = b"<html>ok</html>"
+                self.send_response(200)
+                self.send_header("ETag", '"abc"')
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 8959), H)
+    srv.allow_reuse_address = True
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    try:
+        async def _run():
+            settings = DownloaderSettings(
+                rate_limit_ms=0, retries=0, allow_private_network=True, respect_robots=False
+            )
+            async with Downloader(settings) as dl:
+                r1 = await dl.fetch_result("http://127.0.0.1:8959/x")
+                r2 = await dl.fetch_result(
+                    "http://127.0.0.1:8959/x", extra_headers={"If-None-Match": '"abc"'}
+                )
+                return r1.status_code, r2.status_code
+
+        s1, s2 = asyncio.run(_run())
+        assert s1 == 200 and s2 == 304
+    finally:
+        srv.shutdown()
+        srv.server_close()

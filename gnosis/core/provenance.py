@@ -63,7 +63,7 @@ def build_frontmatter(
         "title": metadata.get("title") or "",
         "url": fetch.final_url or fetch.url,
         "fetched_at": fetch.fetched_at,
-        "content_hash": compute_content_hash(markdown),
+        "content_hash": compute_content_hash(markdown.rstrip() + "\n"),
         "bytes_sha256": compute_bytes_hash(fetch.raw_bytes),
         "status_code": fetch.status_code,
         "generator": f"gnosis/{__version__}",

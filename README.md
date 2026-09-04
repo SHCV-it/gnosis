@@ -163,7 +163,7 @@ fetched_at: '2026-09-02T08:41:44Z'
 content_hash: 1549512c...16fd     # SHA-256 of the markdown body
 bytes_sha256: 85052df6...bcb31    # SHA-256 of the raw response bytes
 status_code: 200
-generator: gnosis/2.0.0
+generator: gnosis/2.2.0
 etag: '"61e917f4..."'
 last_modified: Fri, 31 Jul 2026 16:07:37 GMT
 ---

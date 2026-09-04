@@ -60,7 +60,6 @@
   TLS SNI/certificate verification still uses the original hostname, so pinning
   does not weaken TLS.
 
-## [2.0.1] - 2026-09-03
 
 ### Fixed
 - signing: re-signing no longer emits duplicate `signed_at` keys; the STORED
