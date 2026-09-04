@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use gnosis in your research, please cite it as below."
 title: "gnosis: web scraping to LLM-ready Markdown with byte-level provenance"
 type: software
-version: 2.1.1
+version: 2.2.0
 doi: 10.5281/zenodo.22276101
 authors:
   - given-names: Steffen

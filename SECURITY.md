@@ -36,8 +36,7 @@ Gnosis fetches untrusted web content and is hardened by default:
 - **No end-to-end render test** — the Obscura sidecar binary is not present in
   CI, so `--render` is tested only for the missing-binary path and provenance
   fields.
-- **Sitemap XML** is parsed with stdlib `ElementTree` (no external-entity
-  hardening); only enable sitemap ingestion for trusted inputs.
+- **Sitemap XML** is parsed with `defusedxml` (entity-expansion hardened).
 
 ## Treat fetched content as untrusted
 
