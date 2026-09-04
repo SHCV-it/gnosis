@@ -19,6 +19,7 @@ nav:
   - CLI Reference: cli-reference.md
   - Architecture: architecture.md
   - Capture Record Spec: capture-record-spec.md
+  - The Self-Audit: self-audit.md
 
 markdown_extensions:
   - pymdownx.highlight

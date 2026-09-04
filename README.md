@@ -14,6 +14,12 @@ archival, and Ed25519 signatures you can verify independently.
 
 **Byte-level provenance. Re-fetchable. Re-verifiable. No sidecar bookkeeping.**
 
+> **It started with an audit.** I tested my own scraper against a page I'd
+> written, and its "completeness" metric reported **106% retention** on a
+> document that had lost a third of its text. The number was arithmetically
+> valid; every test was green. The fix — and the open problem it exposed — are
+> in the [self-audit](docs/self-audit.md) and [spec §4.4](docs/capture-record-spec.md).
+
 <p align="center">
   <a href="https://pypi.org/project/gnosis-markdown/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/gnosis-markdown?color=blue"></a>
   <a href="https://pypi.org/project/gnosis-markdown/"><img alt="Python Versions" src="https://img.shields.io/pypi/pyversions/gnosis-markdown?color=blue"></a>
@@ -77,6 +83,12 @@ each project against its own repository before relying on this table.
 Firecrawl and Jina Reader are hosted services: some server-side behavior
 (e.g. SSRF handling) exists but cannot be verified by a third party in a
 self-hosted build, hence ➖.*
+
+**Sources (verified 2026-09-04):** gnosis-markdown — [280-test suite](https://github.com/SHCV-it/gnosis/tree/main/tests)
+and the [Capture Record spec](docs/capture-record-spec.md) · Firecrawl —
+[docs.firecrawl.dev](https://docs.firecrawl.dev) · Crawl4AI —
+[github.com/unclecode/crawl4ai](https://github.com/unclecode/crawl4ai) · Jina Reader —
+[jina.ai/reader](https://jina.ai/reader).
 
 ## Verify it yourself
 
