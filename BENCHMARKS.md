@@ -29,20 +29,18 @@ raw byte count, markdown character count, and whether **provenance is complete**
 | Corpus size | 5 |
 | Successful | 5/5 |
 | Success rate | 100.0% |
-| Avg latency | 1827 ms |
+| Avg latency | 1421 ms |
 | Avg markdown/raw ratio | 0.405 |
 | **Provenance complete** | **5/5** |
-| Token estimate | 17,553 |
+| Token estimate | 17,441 |
 
 ### Per-URL
 
-| URL | Status | Latency | Raw bytes | Markdown chars | Provenance |
-|---|---|---|---|---|---|
-| example.com | 200 | 947 ms | 559 | 168 | ✅ |
-| python.org | 200 | 1339 ms | 52,476 | 4,473 | ✅ |
-| en.wikipedia.org/wiki/Markdown | 200 | 1228 ms | 311,719 | 43,326 | ✅ |
-| httpbin.org/html | 200 | 3173 ms | 3,741 | 3,598 | ✅ |
-| news.ycombinator.com | 200 | 2448 ms | 34,533 | 18,649 | ✅ |
+| https://example.com/ | 200 | 540 ms | 559 | 168 | ✅ |
+| https://www.python.org/ | 200 | 766 ms | 52,476 | 4,473 | ✅ |
+| https://en.wikipedia.org/wiki/Markdown | 200 | 1544 ms | 311,719 | 43,326 | ✅ |
+| https://httpbin.org/html | 200 | 2080 ms | 3,741 | 3,598 | ✅ |
+| https://news.ycombinator.com/ | 200 | 2175 ms | 33,884 | 18,201 | ✅ |
 
 ## What "provenance complete" means
 
