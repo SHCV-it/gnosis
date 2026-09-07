@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.4.1] - 2026-09-07
+
+### Changed
+- README rewrite from a 10-person marketing panel: spec-accurate hero ("Prove
+  what you fetched — and that it's unchanged"), quickstart surfaced above the
+  fold, keyword-rich H1/H2s, portability fix (`sha256sum`), honest-comparison
+  table corrected (Firecrawl is open-source/self-hostable), and the "no sidecar
+  bookkeeping" claim reworded to match actual artifacts
+
+### Fixed
+- `docs/capture-record-spec.md` reference-implementation pointer was stale
+  (v2.2.0 -> v2.4.1)
+
 ## [2.4.0] - 2026-09-07
 
 ### Added

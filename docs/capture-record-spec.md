@@ -4,7 +4,7 @@
 **Date:** 2026-09-03
 **Editor:** Ali Zahid Raja, SHCV IT OÜ
 **License:** MIT
-**Reference implementation:** [gnosis](https://github.com/SHCV-it/gnosis) v2.2.0
+**Reference implementation:** [gnosis](https://github.com/SHCV-it/gnosis) v2.4.1
 **Status:** Draft. Open for comment. Field names are stable within v1.x; breaking changes increment the major version.
 
 ---
