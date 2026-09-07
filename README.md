@@ -1,24 +1,26 @@
-# gnosis-markdown
+# gnosis-markdown — Web to Markdown scraper with byte-level SHA-256 provenance
 
-**Prove where every document came from.**
+**Prove what you fetched — and that it's unchanged.**
 
-*Web → clean, RAG-ready Markdown — with proof of origin baked into every byte.*
+*Web → clean, RAG-ready Markdown — with verifiable provenance stamped into every file.*
+
+gnosis-markdown is an open-source **Python web-to-Markdown scraper and crawler** for
+LLM/RAG pipelines: it converts HTML to clean Markdown and stamps every file with
+verifiable SHA-256, WARC, and Ed25519 provenance.
+
+**Start now:**
+
+```bash
+pip install gnosis-markdown && gnosis https://docs.python.org/3/tutorial/
+```
 
 > **Markdown is a projection; the raw bytes + WARC are the source of truth.**
 
 For **RAG engineers**, **compliance & data-governance teams**, and
 **security-sensitive researchers** who need to *prove* — not just assume —
-where a document came from, gnosis-markdown fetches and crawls any page into
-LLM-ready Markdown while stamping every file with byte-level SHA-256, WARC
+what was fetched and that it hasn't changed, gnosis-markdown fetches and crawls any
+page into LLM-ready Markdown while stamping every file with byte-level SHA-256, WARC
 archival, and Ed25519 signatures you can verify independently.
-
-**Byte-level provenance. Re-fetchable. Re-verifiable. No sidecar bookkeeping.**
-
-> **It started with an audit.** I tested my own scraper against a page I'd
-> written, and its "completeness" metric reported **106% retention** on a
-> document that had lost a third of its text. The number was arithmetically
-> valid; every test was green. The fix — and the open problem it exposed — are
-> in the [self-audit](https://github.com/SHCV-it/gnosis/blob/main/docs/self-audit.md) and [spec §4.4](https://github.com/SHCV-it/gnosis/blob/main/docs/capture-record-spec.md).
 
 <p align="center">
   <a href="https://pypi.org/project/gnosis-markdown/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/gnosis-markdown?color=blue"></a>
@@ -30,8 +32,56 @@ archival, and Ed25519 signatures you can verify independently.
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/SHCV-it/gnosis/main/docs/demo.gif" alt="gnosis in action" width="720">
+  <img src="https://raw.githubusercontent.com/SHCV-it/gnosis/main/docs/demo.gif" alt="gnosis-markdown converting a web page to RAG-ready Markdown with provenance" width="720">
 </p>
+
+## Quick start: scrape any page to Markdown
+
+```bash
+pip install gnosis-markdown
+
+# One page → one markdown file (written to ./ by default; use -o to change it)
+gnosis https://docs.python.org/3/tutorial/
+
+# Crawl an entire section
+gnosis https://docs.python.org/3/tutorial/ --all -o ./python-docs/
+
+# Archive the raw bytes to WARC + a content-addressed store, and sign the record
+pip install 'gnosis-markdown[sign]'   # signing needs the [sign] extra
+gnosis https://docs.python.org/3/tutorial/ --warc --sign --sign-key key.pem
+
+# Emit per-chunk citation manifests for RAG
+gnosis https://example.com --chunk
+
+# Export with provenance (JSON / JSONL / Parquet)
+gnosis https://example.com --format json
+
+# Evaluate yourself against a corpus (one URL per line)
+printf 'https://docs.python.org/3/\nhttps://example.com/\n' > urls.txt
+gnosis-bench --urls urls.txt
+
+# Convert a PDF/Office doc to Markdown (pip install gnosis-markdown[docs])
+gnosis-doc report.pdf -o report.md
+```
+
+**JS rendering** is opt-in via a sidecar binary (default `obscura`); install the
+[Obscura](https://github.com/h4ckf0r0day/obscura) binary, then
+`gnosis https://my-spa.example --render` (or set `render.engine` in config). Obscura is
+a third-party project outside gnosis's audit scope — pin a version and review it before use.
+
+## Why gnosis-markdown — web to Markdown with provenance
+
+**The provenance-first web-to-Markdown layer for LLM pipelines — not another scraper.**
+
+You can scrape the web with a dozen tools. Of the four compared here, only one ships
+provenance as a first-class, in-tree feature. gnosis-markdown turns every fetch into an
+auditable **Capture Record**: hash the bytes, archive the raw response, record the
+consent signals, and sign the result — so the document in your RAG index is traceable
+to the decoded response body bytes.
+
+Firecrawl, Crawl4AI and Jina Reader win on speed, scale and hosting.
+gnosis-markdown doesn't compete there — it wins on **auditability**, the one axis none
+of them ship as a first-class feature.
 
 > **Known limitations, stated plainly:** `retention_ratio` measures *how much*
 > text survived extraction, not *which* text (a single dropped table in a long
@@ -39,26 +89,34 @@ archival, and Ed25519 signatures you can verify independently.
 > a sidecar. The SSRF guard covers direct connections, not proxies. Full
 > disclosure in [SECURITY.md](https://github.com/SHCV-it/gnosis/blob/main/SECURITY.md).
 
-## Why gnosis-markdown
+## Verify provenance yourself (reproduce the hash)
 
-**The citation/provenance layer for LLM pipelines — not another scraper.**
+The provenance claim is the product. After a fetch:
 
-You can scrape the web with a dozen tools. You can only *prove* where a
-document came from with one. gnosis-markdown turns every fetch into an
-auditable **Capture Record**: hash the bytes, archive the raw response, record
-the consent signals, and sign the result — so the document in your RAG index is
-traceable to the bytes on the wire.
+```bash
+gnosis https://docs.python.org/3/tutorial/ -o out/ --warc
 
-Firecrawl, Crawl4AI and Jina Reader win on speed, scale and hosting.
-gnosis-markdown doesn't compete there — it wins on **auditability**, the one
-axis none of them ship as a first-class feature.
+# One command: extract the hash from the frontmatter and integrity-check the archived body blob.
+# macOS/BSD: replace `sha256sum` with `shasum -a 256`
+h=$(sed -n 's/^bytes_sha256: *//p' out/*.md | head -1); printf '%s  %s\n' "$h" "out/.gnosis-store/$h" | sha256sum -c -
+# prints: <hash>: OK
+```
 
-### The honest comparison
+With `--warc`, every fetched file is re-fetchable and re-verifiable — the digest lives
+in the frontmatter, so no sidecar index is needed to re-verify. Without `--warc`, the
+frontmatter hash still records provenance, but the raw bytes are not retained.
 
-This table is deliberately **not** a feature matrix. It claims only the
-provenance / audit / consent / signing surface gnosis-markdown ships in its own
-tree — and nothing about speed, scale, or hosting, where we do *not* claim to
-compete.
+**A real, committed example:** [`docs/examples/example.com.md`](https://github.com/SHCV-it/gnosis/blob/main/docs/examples/example.com.md) was fetched live with `--warc` — its `bytes_sha256` (`ff67a9d7…`), `content_hash`, and `fetched_at` are real. The raw bytes are archived at `docs/examples/archive.warc.gz`, and the content-addressed blob lives at `docs/examples/.gnosis-store/<bytes_sha256>`. Verify it with no network access:
+
+```bash
+h=$(sed -n 's/^bytes_sha256: *//p' docs/examples/example.com.md); printf '%s  %s\n' "$h" "docs/examples/.gnosis-store/$h" | sha256sum -c -
+```
+
+Reproducible benchmark evidence: see [BENCHMARKS.md](https://github.com/SHCV-it/gnosis/blob/main/BENCHMARKS.md).
+
+## gnosis-markdown vs Firecrawl, Crawl4AI, Jina Reader
+
+This table covers only the audit/provenance surface — not speed, scale, or hosting.
 
 | Audit-surface capability | gnosis-markdown | Firecrawl | Crawl4AI | Jina Reader |
 | --- | --- | --- | --- | --- |
@@ -73,86 +131,34 @@ compete.
 | Versioned, machine-readable Capture Record spec | ✅ | ❌ | ❌ | ❌ |
 
 **Legend:** ✅ first-class, shipped in-tree and verifiable · ⚠️ partial / not the
-same thing · ❌ not offered as a documented feature · ➖ opaque (managed service;
-behavior not verifiable in a self-hosted deployment).
+same thing · ❌ not offered as a documented feature · ➖ present but not audited against
+these criteria, or server-side and not third-party verifiable.
 
 *As of September 2026. gnosis-markdown claims are verifiable against this
 repository (`--sign`, `--warc`, `--profile`, `gnosis-keygen`, `gnosis-verify`).
 Competitor columns reflect their public docs at time of writing — re-verify
 each project against its own repository before relying on this table.
-Firecrawl and Jina Reader are hosted services: some server-side behavior
-(e.g. SSRF handling) exists but cannot be verified by a third party in a
-self-hosted build, hence ➖.*
+Jina Reader is a hosted service whose server-side SSRF behavior is not verifiable by a
+third party. Firecrawl is open-source and self-hostable, so its `➖` marks that we did
+not audit it against these criteria, not that it is opaque.*
 
-**Sources (verified 2026-09-07):** gnosis-markdown — [284-test suite](https://github.com/SHCV-it/gnosis/tree/main/tests)
+**Sources (verified 2026-09-07):** gnosis-markdown — [328-test suite](https://github.com/SHCV-it/gnosis/tree/main/tests)
 and the [Capture Record spec](https://github.com/SHCV-it/gnosis/blob/main/docs/capture-record-spec.md) · Firecrawl —
 [docs.firecrawl.dev](https://docs.firecrawl.dev) · Crawl4AI —
 [github.com/unclecode/crawl4ai](https://github.com/unclecode/crawl4ai) · Jina Reader —
 [jina.ai/reader](https://jina.ai/reader).
 
-## Verify it yourself
-
-The provenance claim is the product. After a fetch:
-
-```bash
-gnosis https://docs.python.org/3/tutorial/ -o out/ --warc
-
-# One command: extract the hash from the frontmatter and re-verify the stored body.
-h=$(sed -n 's/^bytes_sha256: *//p' out/*.md | head -1); printf '%s  %s\n' "$h" "out/.gnosis-store/$h" | shasum -a 256 -c -
-# prints: <hash>: OK
-```
-
-Every markdown file is re-fetchable and re-verifiable — no sidecar bookkeeping.
-
-**A real, committed example:** [`docs/examples/example.com.md`](https://github.com/SHCV-it/gnosis/blob/main/docs/examples/example.com.md) was fetched live with `--warc` — its `bytes_sha256` (`ff67a9d7…`), `content_hash`, and `fetched_at` are real. The raw bytes are archived at `docs/examples/archive.warc.gz`, and the content-addressed blob lives at `docs/examples/.gnosis-store/<bytes_sha256>`. Point the verification one-liner above at `docs/examples/example.com.md` to re-verify it with no network access.
-
-Reproducible benchmark evidence: see [BENCHMARKS.md](https://github.com/SHCV-it/gnosis/blob/main/BENCHMARKS.md).
-
-## Quick start
-
-Requires **Python 3.9+** (the `mcp`, `docs`, `qmd`, `llamaindex`, and `langchain` extras need 3.10+).
-
-```bash
-pip install gnosis-markdown
-
-# One page → one markdown file (written to ./ by default; use -o to change it)
-gnosis https://docs.python.org/3/tutorial/
-
-# Crawl an entire section
-gnosis https://docs.python.org/3/tutorial/ --all -o ./python-docs/
-
-# Archive the raw bytes to WARC + a content-addressed store, and sign the record
-gnosis https://docs.python.org/3/tutorial/ --warc --sign --sign-key key.pem
-
-# Emit per-chunk citation manifests for RAG
-gnosis https://docs.example.com --chunk
-
-# Export with provenance (JSON / JSONL / Parquet)
-gnosis https://docs.example.com --format json
-
-# Evaluate yourself against a corpus (one URL per line)
-printf 'https://docs.python.org/3/\nhttps://example.com/\n' > urls.txt
-gnosis-bench --urls urls.txt
-
-# Convert a PDF/Office doc to Markdown (pip install gnosis-markdown[docs])
-gnosis-doc report.pdf -o report.md
-```
-
-**JS rendering** is opt-in via a sidecar binary (default `obscura`); install the
-[Obscura](https://github.com/h4ckf0r0day/obscura) binary, then
-`gnosis https://my-spa.example --render` (or set `render.engine` in config).
-
 ## Features
 
 ### Provenance & audit — the moat
 
-- **`bytes_sha256`** — SHA-256 of the response body bytes (after content
-  decoding). You hash the bytes, not the derived text.
+- **`bytes_sha256`** — SHA-256 of the response body bytes (after HTTP content
+  decoding — the decoded body, not wire/transfer bytes). You hash the bytes, not the derived text.
 - **`content_hash`** — SHA-256 of the emitted Markdown, so transforms are
   auditable too.
 - **WARC archival** (`--warc`) — WARC-grade evidence, replayable via any ISO 28500 WARC replayer (e.g. pywb), plus
   a content-addressed store keyed on `bytes_sha256`. Every file is re-fetchable
-  and re-verifiable — no sidecar bookkeeping.
+  and re-verifiable — the digest lives in the file, not a database.
 - **Ed25519 signing — seal of origin** — `--sign` cryptographically signs each
   record; `gnosis-keygen` mints keypairs and `gnosis-verify` checks them against
   a pinned key. Prove a document came from a capture you made, untouched.
@@ -230,7 +236,7 @@ fetched_at: '2026-09-02T08:41:44Z'
 content_hash: 1549512c...16fd     # SHA-256 of the markdown body
 bytes_sha256: 85052df6...bcb31    # SHA-256 of the response body bytes
 status_code: 200
-generator: gnosis/2.4.0
+generator: gnosis/2.4.1
 etag: '"61e917f4..."'
 last_modified: Fri, 31 Jul 2026 16:07:37 GMT
 ---
@@ -266,13 +272,14 @@ gnosis URL [OPTIONS]
 | `--sitemap` | Treat URL as a sitemap.xml and list its page URLs |
 | `--qmd-index` | Index output into QMD (requires `[qmd]` extra) |
 | `--sign` | Cryptographically sign the output (Ed25519 seal of origin) |
-| `--sign-key FILE` | Ed25519 private key (PEM) for `--sign` (or `$GNOSIS_SIGNING_KEY`) |
+| `--sign-key FILE` | Ed25519 private key (PEM) for `--sign` (default `$GNOSIS_SIGNING_KEY`) |
 | `--format json\|jsonl\|parquet` | Also export documents (with provenance) |
 | `--profile NAME` | Compliance preset: `strict-optout` / `open-only` |
 
 Also available: **`gnosis-bench`** (reproducible scorecard), **`gnosis-doc`**
 (document → Markdown), **`gnosis-keygen`** (generate a signing keypair),
-**`gnosis-verify`** (verify a signed document), and **`gnosis-mcp`** (MCP server).
+**`gnosis-verify`** (verify a signed document — pass `--public-key` to pin the
+producer identity), and **`gnosis-mcp`** (MCP server).
 
 ## Installation
 
@@ -290,6 +297,16 @@ pip install 'gnosis-markdown[qmd]'           # QMD vector-DB indexing
 Requires **Python 3.9+** (the `mcp`, `docs`, `qmd`, `llamaindex`, and `langchain` extras need 3.10+). See
 [`gnosis/config/default.yaml`](https://github.com/SHCV-it/gnosis/blob/main/gnosis/config/default.yaml) for the full
 configuration reference.
+
+## Background
+
+> **It started with an audit.** I tested my own scraper against a page I'd
+> written, and its "completeness" metric reported **106% retention** on a
+> document that had lost a third of its text. The number was arithmetically
+> valid; every test was green — the metric was certifying garbage. The fix — and
+> the open problem it exposed — are in the
+> [self-audit](https://github.com/SHCV-it/gnosis/blob/main/docs/self-audit.md) and
+> [spec §4.4](https://github.com/SHCV-it/gnosis/blob/main/docs/capture-record-spec.md).
 
 ## Development
 
