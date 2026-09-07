@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "job": {
+    "source": "https://example.com/",
+    "mode": "single",
+    "generator": "gnosis/2.3.0"
+  },
+  "summary": {
+    "pages": 1,
+    "succeeded": 1,
+    "failed": 0,
+    "total_raw_bytes": 559,
+    "total_markdown_chars": 168,
+    "retention_ratio": {
+      "min": 0.9137,
+      "max": 0.9137,
+      "avg": 0.9137
+    }
+  },
+  "licenses_seen": [],
+  "compliance": {
+    "ai_txt_hosts": 0,
+    "llms_txt_hosts": 0,
+    "low_content_pages": 0
+  },
+  "pages": [
+    {
+      "url": "https://example.com/",
+      "status_code": 200,
+      "raw_bytes": 559,
+      "markdown_chars": 168,
+      "content_hash": "d6ac852cf2392c04d2cf3e3e4156f786cfbc4f46308ebe756ebd72cf9ffef4ef",
+      "bytes_sha256": "ff67a9d764d6a2367a187734e697f6a53217db9a21c101d410a113ca871a299d",
+      "retention_ratio": 0.9137,
+      "stripped_elements": 3,
+      "low_content": false,
+      "license": null,
+      "ai_txt": null,
+      "llms_txt": false,
+      "policy_decision": null
+    }
+  ]
+}
