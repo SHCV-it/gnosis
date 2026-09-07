@@ -4,3 +4,4 @@ include CHANGELOG.md
 recursive-include gnosis *.py
 recursive-include gnosis *.yaml
 recursive-include tests *.py
+recursive-include docs *.md *.json *.yaml *.txt *.gif

@@ -18,7 +18,7 @@ archival, and Ed25519 signatures you can verify independently.
 > written, and its "completeness" metric reported **106% retention** on a
 > document that had lost a third of its text. The number was arithmetically
 > valid; every test was green. The fix — and the open problem it exposed — are
-> in the [self-audit](docs/self-audit.md) and [spec §4.4](docs/capture-record-spec.md).
+> in the [self-audit](https://github.com/SHCV-it/gnosis/blob/main/docs/self-audit.md) and [spec §4.4](https://github.com/SHCV-it/gnosis/blob/main/docs/capture-record-spec.md).
 
 <p align="center">
   <a href="https://pypi.org/project/gnosis-markdown/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/gnosis-markdown?color=blue"></a>
@@ -85,7 +85,7 @@ Firecrawl and Jina Reader are hosted services: some server-side behavior
 self-hosted build, hence ➖.*
 
 **Sources (verified 2026-09-07):** gnosis-markdown — [284-test suite](https://github.com/SHCV-it/gnosis/tree/main/tests)
-and the [Capture Record spec](docs/capture-record-spec.md) · Firecrawl —
+and the [Capture Record spec](https://github.com/SHCV-it/gnosis/blob/main/docs/capture-record-spec.md) · Firecrawl —
 [docs.firecrawl.dev](https://docs.firecrawl.dev) · Crawl4AI —
 [github.com/unclecode/crawl4ai](https://github.com/unclecode/crawl4ai) · Jina Reader —
 [jina.ai/reader](https://jina.ai/reader).
@@ -104,7 +104,7 @@ h=$(sed -n 's/^bytes_sha256: *//p' out/*.md | head -1); printf '%s  %s\n' "$h" "
 
 Every markdown file is re-fetchable and re-verifiable — no sidecar bookkeeping.
 
-**A real, committed example:** [`docs/examples/example.com.md`](docs/examples/example.com.md) was fetched live with `--warc` — its `bytes_sha256` (`ff67a9d7…`), `content_hash`, and `fetched_at` are real. The raw bytes are archived at `docs/examples/archive.warc.gz`, and the content-addressed blob lives at `docs/examples/.gnosis-store/<bytes_sha256>`. Point the verification one-liner above at `docs/examples/example.com.md` to re-verify it with no network access.
+**A real, committed example:** [`docs/examples/example.com.md`](https://github.com/SHCV-it/gnosis/blob/main/docs/examples/example.com.md) was fetched live with `--warc` — its `bytes_sha256` (`ff67a9d7…`), `content_hash`, and `fetched_at` are real. The raw bytes are archived at `docs/examples/archive.warc.gz`, and the content-addressed blob lives at `docs/examples/.gnosis-store/<bytes_sha256>`. Point the verification one-liner above at `docs/examples/example.com.md` to re-verify it with no network access.
 
 Reproducible benchmark evidence: see [BENCHMARKS.md](https://github.com/SHCV-it/gnosis/blob/main/BENCHMARKS.md).
 
