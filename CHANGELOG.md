@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.4.0] - 2026-09-07
+
+### Added
+- Python 3.9–3.11 support: `requires-python` lowered from `>=3.12` to
+  `>=3.9`; `from __future__ import annotations` + `datetime.timezone.utc`
+  make the codebase run on 3.9+, and CI now tests 3.9–3.13
+- `mcp` extra is conditional (`python_version >= "3.10"` — the MCP SDK
+  itself requires 3.10+); the stdio introspection test skips when `mcp` is
+  absent
+
+### Fixed
+- 3.12-only f-string (backslash inside an f-string expression) rewritten for 3.9
+- `python-frontmatter` pinned `<1.2.0` (1.2.0 imports `typing.TypeGuard`, 3.10+)
+
 ## [2.3.1] - 2026-09-07
 
 ### Changed

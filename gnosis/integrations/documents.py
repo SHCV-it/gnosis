@@ -6,6 +6,8 @@ gnosis install never pulls it in. Install with:
     pip install gnosis-markdown[docs]
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 
 import click

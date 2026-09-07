@@ -5,6 +5,8 @@ completeness, latency, and content metrics, then emits an aggregate
 scorecard as JSON and a rendered table.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import time

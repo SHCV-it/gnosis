@@ -15,7 +15,7 @@ import base64
 import collections.abc as _abc
 import hashlib
 import json
-from datetime import UTC, date, datetime
+from datetime import date, datetime, timezone
 
 import yaml
 from yaml.constructor import ConstructorError
@@ -66,8 +66,8 @@ def _json_safe(value):
         return value
     if isinstance(value, datetime):
         if value.tzinfo is None:
-            value = value.replace(tzinfo=UTC)
-        value = value.astimezone(UTC)
+            value = value.replace(tzinfo=timezone.utc)
+        value = value.astimezone(timezone.utc)
         if value.microsecond:
             return value.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         return value.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -130,7 +130,7 @@ def sign_manifest(markdown: str, metadata: dict, private_key_pem: str) -> dict:
     """Sign a document's canonical manifest; return the signature fields."""
     serialization, _, _ = _ed25519()
     key = serialization.load_pem_private_key(private_key_pem.encode(), password=None)
-    signed_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    signed_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     manifest_bytes = canonical_manifest(
         markdown, {**metadata, "signed_at": signed_at}
     ).encode("utf-8")

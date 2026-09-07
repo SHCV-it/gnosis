@@ -22,7 +22,7 @@ researchers** who need to prove a document's origin.
 [PyPI](https://pypi.org/project/gnosis-markdown/) ·
 [Source](https://github.com/SHCV-it/gnosis) ·
 [DOI 10.5281/zenodo.22276101](https://doi.org/10.5281/zenodo.22276101) ·
-MIT · Python 3.12+ · maintained by [SHCV.IT](https://shcv.it)
+MIT · Python 3.9+ · maintained by [SHCV.IT](https://shcv.it)
 
 ---
 
@@ -93,7 +93,7 @@ That openness is the moat — the format is the product.
 
 ## Quick start
 
-Requires **Python 3.12+**.
+Requires **Python 3.9+** (the `mcp`, `docs`, `qmd`, `llamaindex`, and `langchain` extras need 3.10+).
 
 ```bash
 pip install gnosis-markdown

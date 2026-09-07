@@ -5,6 +5,8 @@ manifest, so an interrupted `--all` crawl can resume: already-captured
 content is not re-saved, and the manifest/llms.txt accumulate across runs.
 """
 
+from __future__ import annotations
+
 import json
 import os
 from pathlib import Path

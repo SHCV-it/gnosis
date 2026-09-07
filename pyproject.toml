@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gnosis-markdown"
-version = "2.3.1"
+version = "2.4.0"
 description = "Web scraper and crawler that converts websites to clean Markdown with byte-level provenance for LLM/RAG knowledge bases"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.12"
+requires-python = ">=3.9"
 authors = [
     {name = "Steffen Hoehne", email = "steffen.hoehne@shcv.it"},
     {name = "Ali Zahid Raja"},
@@ -20,6 +20,9 @@ classifiers = [
     "Intended Audience :: Information Technology",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Text Processing :: Markup",
@@ -42,33 +45,33 @@ dependencies = [
 
 [project.optional-dependencies]
 qmd = [
-    "torch>=2.0.0",
-    "transformers>=4.30.0",
+    "torch>=2.0.0; python_version >= '3.10'",
+    "transformers>=4.30.0; python_version >= '3.10'",
 ]
 docs = [
-    "markitdown>=0.1",
+    "markitdown>=0.1; python_version >= '3.10'",
 ]
 sign = [
     "cryptography>=42",
 ]
 mcp = [
-    "mcp>=1.0,<2",
+    "mcp>=1.0,<2; python_version >= '3.10'",
 ]
 parquet = [
     "pyarrow>=14",
 ]
 llamaindex = [
-    "llama-index-core>=0.10",
+    "llama-index-core>=0.10; python_version >= '3.10'",
 ]
 langchain = [
-    "langchain-core>=0.2",
+    "langchain-core>=0.2; python_version >= '3.10'",
 ]
 test = [
     "pytest>=8.0.0",
-    "python-frontmatter>=1.0.0",
+    "python-frontmatter>=1.0.0,<1.2.0",
     "pyarrow>=14",
     "cryptography>=42",
-    "mcp>=1.0,<2",
+    "mcp>=1.0,<2; python_version >= '3.10'",
 ]
 
 [project.urls]
@@ -95,7 +98,7 @@ gnosis = ["config/*.yaml"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py312"
+target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]

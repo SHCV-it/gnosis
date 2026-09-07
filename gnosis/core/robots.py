@@ -8,6 +8,8 @@ Fail-open semantics: if robots.txt cannot be fetched (network error, 404, 5xx),
 the URL is treated as allowed — consistent with common crawler practice.
 """
 
+from __future__ import annotations
+
 import re
 from urllib.parse import urlparse
 from urllib.robotparser import RobotFileParser

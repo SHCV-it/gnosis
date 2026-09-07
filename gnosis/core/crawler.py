@@ -6,6 +6,8 @@ pages that match the same domain and path prefix. Supports parallel fetches
 via configurable concurrent_requests.
 """
 
+from __future__ import annotations
+
 import asyncio
 import posixpath
 from collections import deque

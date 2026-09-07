@@ -12,7 +12,7 @@ js_executed) so downstream files record *how* content was obtained.
 import asyncio
 import subprocess
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 
 class RenderError(Exception):
@@ -80,6 +80,6 @@ class ObscuraRenderer:
             html=proc.stdout.decode("utf-8", errors="replace"),
             engine="obscura",
             version=await self._get_version(),
-            render_timestamp=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            render_timestamp=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             js_executed=True,
         )

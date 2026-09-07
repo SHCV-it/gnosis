@@ -4,6 +4,8 @@ Main CLI module for Gnosis.
 Provides the command-line interface using Click.
 """
 
+from __future__ import annotations
+
 import asyncio
 import hashlib
 import json
@@ -752,7 +754,8 @@ async def download_and_convert(
     if not quiet:
         console.print(f"[green]✓[/green] Saved: {output_path}")
         if verbose:
-            console.print(f"[dim]    sha256: {compute_content_hash(markdown.rstrip() + "\n")[:16]}…  "
+            digest = compute_content_hash(markdown.rstrip() + "\n")
+            console.print(f"[dim]    sha256: {digest[:16]}…  "
                           f"status: {fetch.status_code}  fetched: {fetch.fetched_at}[/dim]")
 
     # Run QMD integration if enabled

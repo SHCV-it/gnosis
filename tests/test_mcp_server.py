@@ -117,6 +117,10 @@ def test_stdio_server_responds_to_introspection():
     import subprocess
     import sys
 
+    try:
+        import mcp  # noqa: F401
+    except ImportError:
+        pytest.skip("mcp extra not installed (requires Python 3.10+)")
     exe = os.path.join(os.path.dirname(sys.executable), "gnosis-mcp")
     if not os.path.exists(exe):
         exe = shutil.which("gnosis-mcp")
