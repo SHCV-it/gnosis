@@ -40,3 +40,8 @@ uv.lock
 .gnosis-checkpoint.json
 .gnosis-store/
 archive.warc.gz
+
+# Committed example artifact (docs/examples/example.com.md) — keep its WARC + store re-verifiable in-tree
+!docs/examples/archive.warc.gz
+!docs/examples/.gnosis-store/
+!docs/examples/.gnosis-store/*

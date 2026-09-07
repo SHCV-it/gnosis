@@ -64,7 +64,7 @@ compete.
 | --- | --- | --- | --- | --- |
 | `bytes_sha256` — SHA-256 of the response body bytes | ✅ | ❌ | ❌ | ❌ |
 | `content_hash` — SHA-256 of the derived Markdown | ✅ | ⚠️ | ⚠️ | ❌ |
-| WARC archival + content-addressed store (replay via pywb) | ✅ | ❌ | ❌ | ❌ |
+| WARC archival + content-addressed store (replayable, ISO 28500) | ✅ | ❌ | ❌ | ❌ |
 | Ed25519 seal of origin (sign + pinned-key verify) | ✅ | ❌ | ❌ | ❌ |
 | ai.txt / llms.txt consent recording per fetch | ✅ | ❌ | ❌ | ❌ |
 | Deny-overrides compliance policy engine + `--profile` presets | ✅ | ❌ | ❌ | ❌ |
@@ -84,7 +84,7 @@ Firecrawl and Jina Reader are hosted services: some server-side behavior
 (e.g. SSRF handling) exists but cannot be verified by a third party in a
 self-hosted build, hence ➖.*
 
-**Sources (verified 2026-09-04):** gnosis-markdown — [280-test suite](https://github.com/SHCV-it/gnosis/tree/main/tests)
+**Sources (verified 2026-09-07):** gnosis-markdown — [284-test suite](https://github.com/SHCV-it/gnosis/tree/main/tests)
 and the [Capture Record spec](docs/capture-record-spec.md) · Firecrawl —
 [docs.firecrawl.dev](https://docs.firecrawl.dev) · Crawl4AI —
 [github.com/unclecode/crawl4ai](https://github.com/unclecode/crawl4ai) · Jina Reader —
@@ -103,6 +103,8 @@ h=$(sed -n 's/^bytes_sha256: *//p' out/*.md | head -1); printf '%s  %s\n' "$h" "
 ```
 
 Every markdown file is re-fetchable and re-verifiable — no sidecar bookkeeping.
+
+**A real, committed example:** [`docs/examples/example.com.md`](docs/examples/example.com.md) was fetched live with `--warc` — its `bytes_sha256` (`ff67a9d7…`), `content_hash`, and `fetched_at` are real. The raw bytes are archived at `docs/examples/archive.warc.gz`, and the content-addressed blob lives at `docs/examples/.gnosis-store/<bytes_sha256>`. Point the verification one-liner above at `docs/examples/example.com.md` to re-verify it with no network access.
 
 Reproducible benchmark evidence: see [BENCHMARKS.md](https://github.com/SHCV-it/gnosis/blob/main/BENCHMARKS.md).
 
@@ -148,7 +150,7 @@ gnosis-doc report.pdf -o report.md
   decoding). You hash the bytes, not the derived text.
 - **`content_hash`** — SHA-256 of the emitted Markdown, so transforms are
   auditable too.
-- **WARC archival** (`--warc`) — WARC-grade evidence, replayable via pywb, plus
+- **WARC archival** (`--warc`) — WARC-grade evidence, replayable via any ISO 28500 WARC replayer (e.g. pywb), plus
   a content-addressed store keyed on `bytes_sha256`. Every file is re-fetchable
   and re-verifiable — no sidecar bookkeeping.
 - **Ed25519 signing — seal of origin** — `--sign` cryptographically signs each
@@ -228,7 +230,7 @@ fetched_at: '2026-09-02T08:41:44Z'
 content_hash: 1549512c...16fd     # SHA-256 of the markdown body
 bytes_sha256: 85052df6...bcb31    # SHA-256 of the response body bytes
 status_code: 200
-generator: gnosis/2.2.0
+generator: gnosis/2.3.1
 etag: '"61e917f4..."'
 last_modified: Fri, 31 Jul 2026 16:07:37 GMT
 ---

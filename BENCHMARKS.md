@@ -14,6 +14,8 @@ printf '%s\n' \
   'https://en.wikipedia.org/wiki/Markdown' \
   'https://httpbin.org/html' \
   'https://news.ycombinator.com/' \
+  'https://www.gnu.org/' \
+  'https://www.rfc-editor.org/rfc/rfc3986' \
   > urls.txt
 gnosis-bench --urls urls.txt -o bench-report.json
 ```
@@ -22,25 +24,29 @@ The JSON report is machine-readable and records, per URL: HTTP status, latency,
 raw byte count, markdown character count, and whether **provenance is complete**
 (`bytes_sha256` + `content_hash` + WARC record present).
 
-## Latest scorecard (v2.2.0, 2026-09-03)
+## Latest scorecard (v2.3.1, 2026-09-07)
 
 | Metric | Value |
 |---|---|
-| Corpus size | 5 |
-| Successful | 5/5 |
+| Corpus size | 7 |
+| Successful | 7/7 |
 | Success rate | 100.0% |
-| Avg latency | 1421 ms |
-| Avg markdown/raw ratio | 0.405 |
-| **Provenance complete** | **5/5** |
-| Token estimate | 17,441 |
+| Avg latency | 2101 ms |
+| Avg markdown/raw ratio | 0.363 |
+| **Provenance complete** | **7/7** |
+| Token estimate | 55,486 |
 
 ### Per-URL
 
-| https://example.com/ | 200 | 540 ms | 559 | 168 | ✅ |
-| https://www.python.org/ | 200 | 766 ms | 52,476 | 4,473 | ✅ |
-| https://en.wikipedia.org/wiki/Markdown | 200 | 1544 ms | 311,719 | 43,326 | ✅ |
-| https://httpbin.org/html | 200 | 2080 ms | 3,741 | 3,598 | ✅ |
-| https://news.ycombinator.com/ | 200 | 2175 ms | 33,884 | 18,201 | ✅ |
+| URL | Status | Latency | Raw bytes | Markdown chars | Provenance |
+|---|---|---|---|---|---|
+| https://example.com/ | 200 | 963 ms | 559 | 168 | ✅ |
+| https://www.python.org/ | 200 | 700 ms | 52,851 | 4,929 | ✅ |
+| https://en.wikipedia.org/wiki/Markdown | 200 | 1339 ms | 311,719 | 43,326 | ✅ |
+| https://httpbin.org/html | 200 | 2742 ms | 3,741 | 3,598 | ✅ |
+| https://news.ycombinator.com/ | 200 | 2403 ms | 34,430 | 18,649 | ✅ |
+| https://www.gnu.org/ | 200 | 3225 ms | 31,659 | 8,868 | ✅ |
+| https://www.rfc-editor.org/rfc/rfc3986 | 200 | 3335 ms | 636,877 | 142,406 | ✅ |
 
 ## What "provenance complete" means
 

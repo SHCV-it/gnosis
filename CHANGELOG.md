@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.3.1] - 2026-09-07
+
+### Changed
+- WARC replay claim softened to "any ISO 28500 WARC replayer (e.g. pywb)" —
+  replay is round-trip tested via warcio, not pywb-demonstrated
+- README/docs example artifacts re-synced to the released version
+
+### Added
+- Committed real example artifact (`docs/examples/example.com.md` + WARC +
+  data card + content-addressed store), hash-verified and linked from the README
+- `tests/test_docs.py` — regression test that docs examples cannot drift from
+  `__version__`
+
+### Docs
+- `gnosis-bench` re-run (7 URLs, 7/7 provenance-complete); scorecard re-dated
+
 ## [2.3.0] - 2026-09-04
 
 ### Fixed
