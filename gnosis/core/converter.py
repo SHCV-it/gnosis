@@ -5,6 +5,8 @@ Converts HTML content to clean, LLM-friendly markdown with configurable
 tag exclusions, boilerplate stripping, and content extraction.
 """
 
+from __future__ import annotations
+
 import html as html_lib
 import re
 from dataclasses import dataclass

@@ -22,6 +22,8 @@ validate-then-connect patterns that resolve a hostname, validate, and then
 let a separate resolver decide the connect address.
 """
 
+from __future__ import annotations
+
 import asyncio
 import ipaddress
 import socket

@@ -6,9 +6,11 @@ Supports bearer/basic/custom-header authentication (secrets via environment
 variables) and returns rich fetch results carrying provenance metadata.
 """
 
+from __future__ import annotations
+
 import asyncio
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Optional
 from urllib.parse import urljoin, urlparse
 
@@ -213,7 +215,7 @@ class Downloader:
                                 final_url=str(response.url),
                                 status_code=304,
                                 html="",
-                                fetched_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                fetched_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                                 response_headers={k.lower(): v for k, v in response.headers.items()},
                                 raw_bytes=b"",
                                 content_type="",
@@ -241,7 +243,7 @@ class Downloader:
                             final_url=str(response.url),
                             status_code=response.status_code,
                             html=html,
-                            fetched_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                            fetched_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                             response_headers={k.lower(): v for k, v in response.headers.items()},
                             raw_bytes=raw,
                             content_type=response.headers.get("content-type", ""),

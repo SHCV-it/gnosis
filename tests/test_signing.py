@@ -212,11 +212,11 @@ def test_content_hash_tamper_invalidates(keypair):
 def test_datetime_canonicalized_to_z():
     """Regression: quoted and unquoted ISO dates must canonicalise identically,
     so a consumer with a different YAML parser computes the same manifest."""
-    from datetime import UTC, date, datetime
+    from datetime import date, datetime, timezone
 
     from gnosis.core.signing import _json_safe
 
-    assert _json_safe(datetime(2026, 9, 3, 0, 0, tzinfo=UTC)) == "2026-09-03T00:00:00Z"
+    assert _json_safe(datetime(2026, 9, 3, 0, 0, tzinfo=timezone.utc)) == "2026-09-03T00:00:00Z"
     assert _json_safe(datetime(2026, 9, 3, 0, 0)) == "2026-09-03T00:00:00Z"  # naive -> UTC
     assert _json_safe(date(2026, 9, 3)) == "2026-09-03"
 
@@ -290,14 +290,14 @@ def test_block_scalar_not_missplit(keypair):
 
 def test_fractional_seconds_preserved(keypair):
     """Regression (#52): sub-second datetime tampering must invalidate."""
-    from datetime import UTC, datetime
+    from datetime import datetime, timezone
 
     from gnosis.core.signing import _json_safe
 
     assert "2026-09-03T00:00:00.123456Z" == _json_safe(
-        datetime(2026, 9, 3, 0, 0, 0, 123456, tzinfo=UTC)
+        datetime(2026, 9, 3, 0, 0, 0, 123456, tzinfo=timezone.utc)
     )
-    assert "2026-09-03T00:00:00Z" == _json_safe(datetime(2026, 9, 3, 0, 0, 0, 0, tzinfo=UTC))
+    assert "2026-09-03T00:00:00Z" == _json_safe(datetime(2026, 9, 3, 0, 0, 0, 0, tzinfo=timezone.utc))
 
 
 def test_non_string_dict_keys_coerced(keypair):

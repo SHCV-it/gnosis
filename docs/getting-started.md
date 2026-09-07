@@ -1,6 +1,6 @@
 # Getting Started
 
-Requires Python 3.12+.
+Requires Python 3.9+ (the `mcp`, `docs`, `qmd`, `llamaindex`, and `langchain` extras need 3.10+).
 
 ```bash
 pip install gnosis-markdown

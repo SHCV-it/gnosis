@@ -110,7 +110,7 @@ Reproducible benchmark evidence: see [BENCHMARKS.md](https://github.com/SHCV-it/
 
 ## Quick start
 
-Requires **Python 3.12+**.
+Requires **Python 3.9+** (the `mcp`, `docs`, `qmd`, `llamaindex`, and `langchain` extras need 3.10+).
 
 ```bash
 pip install gnosis-markdown
@@ -230,7 +230,7 @@ fetched_at: '2026-09-02T08:41:44Z'
 content_hash: 1549512c...16fd     # SHA-256 of the markdown body
 bytes_sha256: 85052df6...bcb31    # SHA-256 of the response body bytes
 status_code: 200
-generator: gnosis/2.3.1
+generator: gnosis/2.4.0
 etag: '"61e917f4..."'
 last_modified: Fri, 31 Jul 2026 16:07:37 GMT
 ---
@@ -287,7 +287,7 @@ pip install 'gnosis-markdown[docs]'          # document conversion (MarkItDown)
 pip install 'gnosis-markdown[qmd]'           # QMD vector-DB indexing
 ```
 
-Requires **Python 3.12+**. See
+Requires **Python 3.9+** (the `mcp`, `docs`, `qmd`, `llamaindex`, and `langchain` extras need 3.10+). See
 [`gnosis/config/default.yaml`](https://github.com/SHCV-it/gnosis/blob/main/gnosis/config/default.yaml) for the full
 configuration reference.
 
