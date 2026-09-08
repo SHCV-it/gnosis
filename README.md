@@ -29,6 +29,7 @@ archival, and Ed25519 signatures you can verify independently.
   <a href="https://shcv-it.github.io/gnosis/"><img alt="Docs" src="https://img.shields.io/badge/docs-shcv--it.github.io-blue"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
   <a href="https://doi.org/10.5281/zenodo.22276101"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.22276101.svg"></a>
+  <a href="https://glama.ai/mcp/servers/SHCV-it/gnosis"><img alt="MCP server on Glama" src="https://glama.ai/mcp/servers/SHCV-it/gnosis/badges/score.svg"></a>
 </p>
 
 <p align="center">
@@ -236,7 +237,7 @@ fetched_at: '2026-09-02T08:41:44Z'
 content_hash: 1549512c...16fd     # SHA-256 of the markdown body
 bytes_sha256: 85052df6...bcb31    # SHA-256 of the response body bytes
 status_code: 200
-generator: gnosis/2.4.1
+generator: gnosis/2.4.2
 etag: '"61e917f4..."'
 last_modified: Fri, 31 Jul 2026 16:07:37 GMT
 ---
