@@ -24,7 +24,7 @@ The JSON report is machine-readable and records, per URL: HTTP status, latency,
 raw byte count, markdown character count, and whether **provenance is complete**
 (`bytes_sha256` + `content_hash` + WARC record present).
 
-## Latest scorecard (v2.4.1, 2026-09-07)
+## Latest scorecard (v2.4.2, 2026-09-07)
 
 | Metric | Value |
 |---|---|

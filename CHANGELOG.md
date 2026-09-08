@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.4.2] - 2026-09-07
+
+### Added
+- Glama MCP-server badge in the README badge row (links to the Glama server
+  page; reflects the quality score once claimed)
+
 ## [2.4.1] - 2026-09-07
 
 ### Changed
