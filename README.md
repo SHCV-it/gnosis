@@ -237,7 +237,7 @@ fetched_at: '2026-09-02T08:41:44Z'
 content_hash: 1549512c...16fd     # SHA-256 of the markdown body
 bytes_sha256: 85052df6...bcb31    # SHA-256 of the response body bytes
 status_code: 200
-generator: gnosis/2.4.2
+generator: gnosis/2.4.3
 etag: '"61e917f4..."'
 last_modified: Fri, 31 Jul 2026 16:07:37 GMT
 ---
@@ -276,6 +276,8 @@ gnosis URL [OPTIONS]
 | `--sign-key FILE` | Ed25519 private key (PEM) for `--sign` (default `$GNOSIS_SIGNING_KEY`) |
 | `--format json\|jsonl\|parquet` | Also export documents (with provenance) |
 | `--profile NAME` | Compliance preset: `strict-optout` / `open-only` |
+| `--help` | Show the help message and exit |
+| `--version` | Show the version and exit |
 
 Also available: **`gnosis-bench`** (reproducible scorecard), **`gnosis-doc`**
 (document → Markdown), **`gnosis-keygen`** (generate a signing keypair),
