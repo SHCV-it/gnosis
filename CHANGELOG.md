@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.4.3] - 2026-09-08
+
+### Added
+- Documented the `--help` and `--version` flags in the README CLI reference
+
 ## [2.4.2] - 2026-09-07
 
 ### Added

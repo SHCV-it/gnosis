@@ -3,7 +3,7 @@
   "job": {
     "source": "https://example.com/",
     "mode": "single",
-    "generator": "gnosis/2.4.2"
+    "generator": "gnosis/2.4.3"
   },
   "summary": {
     "pages": 1,
