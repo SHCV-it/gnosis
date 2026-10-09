@@ -93,7 +93,7 @@ That openness is the moat — the format is the product.
 
 ## Quick start
 
-Requires **Python 3.9+** (the `mcp`, `docs`, `qmd`, `llamaindex`, and `langchain` extras need 3.10+).
+Requires **Python 3.9+** (the `docs`, `qmd`, `llamaindex`, and `langchain` extras — plus the built-in `gnosis-mcp` server — need 3.10+).
 
 ```bash
 pip install gnosis-markdown

@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "gnosis": {
-      "command": "gnosis-mcp",
-      "args": [],
+      "command": "uv",
+      "args": ["run", "gnosis-mcp"],
       "description": "Fetch web pages as Markdown with a verifiable provenance record."
     }
   }

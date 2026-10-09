@@ -216,7 +216,7 @@ and the [Capture Record spec](https://github.com/SHCV-it/gnosis/blob/main/docs/c
 ### Integrations
 
 - **MCP server** (`gnosis-mcp`) — expose gnosis as an MCP `fetch_and_convert`
-  tool that returns provenance-stamped Markdown (`[mcp]` extra).
+  tool that returns provenance-stamped Markdown (ships with the core install).
 - **LlamaIndex reader** and **LangChain document loader** — return provenance-
   stamped `Document`s (`[llamaindex]` / `[langchain]` extras).
 - **Plugin hooks** — `pre_fetch` / `post_fetch` / `post_process` for custom
@@ -287,17 +287,16 @@ producer identity), and **`gnosis-mcp`** (MCP server).
 ## Installation
 
 ```bash
-pip install gnosis-markdown                  # core
+pip install gnosis-markdown                  # core + MCP server (gnosis-mcp)
 pip install 'gnosis-markdown[sign]'          # Ed25519 signing (cryptography)
 pip install 'gnosis-markdown[parquet]'       # Parquet export (pyarrow)
-pip install 'gnosis-markdown[mcp]'           # MCP server
 pip install 'gnosis-markdown[llamaindex]'    # LlamaIndex reader
 pip install 'gnosis-markdown[langchain]'     # LangChain loader
 pip install 'gnosis-markdown[docs]'          # document conversion (MarkItDown)
 pip install 'gnosis-markdown[qmd]'           # QMD vector-DB indexing
 ```
 
-Requires **Python 3.9+** (the `mcp`, `docs`, `qmd`, `llamaindex`, and `langchain` extras need 3.10+). See
+Requires **Python 3.9+** (the `docs`, `qmd`, `llamaindex`, and `langchain` extras — plus the built-in `gnosis-mcp` server — need 3.10+). See
 [`gnosis/config/default.yaml`](https://github.com/SHCV-it/gnosis/blob/main/gnosis/config/default.yaml) for the full
 configuration reference.
 

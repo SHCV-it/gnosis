@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- **Glama MCP listing build**: `mcp` is now a **core** dependency (previously an
+  optional `[mcp]` extra), so Glama's `uv sync` build installs the MCP SDK needed
+  by `gnosis-mcp`. `server.json` launches via `uv run gnosis-mcp` (the console
+  script lives in the project venv, not on `PATH`), and the Dockerfile uses
+  `uv sync --frozen` with `CMD ["uv", "run", "gnosis-mcp"]`.
+
 ## [2.4.3] - 2026-09-08
 
 ### Added

@@ -32,7 +32,7 @@ gnosis URL [OPTIONS]
 Also available: **`gnosis-bench`** (reproducible scorecard), **`gnosis-doc`**
 (document → Markdown), **`gnosis-keygen`** (generate a signing keypair),
 **`gnosis-verify`** (verify a signed document — pass `--public-key` to pin the
-producer identity), and **`gnosis-mcp`** (MCP server; `[mcp]` extra).
+producer identity), and **`gnosis-mcp`** (MCP server; ships with the core install).
 
 ## Configuration
 

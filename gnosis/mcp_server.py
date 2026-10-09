@@ -2,8 +2,8 @@
 
 `gnosis-mcp` serves a `fetch_and_convert` tool that returns provenance-stamped
 Markdown (url, content_hash, bytes_sha256, status_code, fetched_at). The `mcp`
-SDK is imported lazily so it stays an optional extra
-(`pip install 'gnosis-markdown[mcp]'`).
+SDK is imported lazily: it is a core dependency on Python 3.10+, but gnosis
+still installs and runs on 3.9 where the MCP server is unavailable.
 """
 
 from __future__ import annotations
@@ -46,10 +46,10 @@ def main() -> None:
     """Run the MCP server over stdio (requires the `mcp` package)."""
     try:
         from mcp.server.fastmcp import FastMCP
-    except ImportError as exc:  # pragma: no cover - exercised via [mcp] extra
+    except ImportError as exc:  # pragma: no cover - reached on py<3.10 (mcp absent)
         raise SystemExit(
-            "gnosis-mcp requires the 'mcp' package. "
-            "Install it with: pip install 'gnosis-markdown[mcp]'"
+            "gnosis-mcp requires the 'mcp' package (Python 3.10+). "
+            "Install with: pip install gnosis-markdown"
         ) from exc
 
     mcp = FastMCP("gnosis")

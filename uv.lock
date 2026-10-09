@@ -1221,7 +1221,7 @@ wheels = [
 
 [[package]]
 name = "gnosis-markdown"
-version = "2.4.0"
+version = "2.4.3"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -1231,6 +1231,7 @@ dependencies = [
     { name = "httpcore" },
     { name = "httpx" },
     { name = "lxml" },
+    { name = "mcp", marker = "python_full_version >= '3.10'" },
     { name = "pyyaml" },
     { name = "rich" },
     { name = "warcio" },
@@ -1245,9 +1246,6 @@ langchain = [
 ]
 llamaindex = [
     { name = "llama-index-core", marker = "python_full_version >= '3.10'" },
-]
-mcp = [
-    { name = "mcp", marker = "python_full_version >= '3.10'" },
 ]
 parquet = [
     { name = "pyarrow", version = "21.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -1285,7 +1283,7 @@ requires-dist = [
     { name = "llama-index-core", marker = "python_full_version >= '3.10' and extra == 'llamaindex'", specifier = ">=0.10" },
     { name = "lxml", specifier = ">=5.0.0" },
     { name = "markitdown", marker = "python_full_version >= '3.10' and extra == 'docs'", specifier = ">=0.1" },
-    { name = "mcp", marker = "python_full_version >= '3.10' and extra == 'mcp'", specifier = ">=1.0,<2" },
+    { name = "mcp", marker = "python_full_version >= '3.10'", specifier = ">=1.0,<2" },
     { name = "mcp", marker = "python_full_version >= '3.10' and extra == 'test'", specifier = ">=1.0,<2" },
     { name = "pyarrow", marker = "extra == 'parquet'", specifier = ">=14" },
     { name = "pyarrow", marker = "extra == 'test'", specifier = ">=14" },

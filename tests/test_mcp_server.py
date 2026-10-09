@@ -120,12 +120,12 @@ def test_stdio_server_responds_to_introspection():
     try:
         import mcp  # noqa: F401
     except ImportError:
-        pytest.skip("mcp extra not installed (requires Python 3.10+)")
+        pytest.skip("mcp not installed (requires Python 3.10+)")
     exe = os.path.join(os.path.dirname(sys.executable), "gnosis-mcp")
     if not os.path.exists(exe):
         exe = shutil.which("gnosis-mcp")
     if not exe:
-        pytest.skip("gnosis-mcp console script not installed (mcp extra missing)")
+        pytest.skip("gnosis-mcp console script not installed (mcp not installed)")
 
     proc = subprocess.Popen(
         [exe],
