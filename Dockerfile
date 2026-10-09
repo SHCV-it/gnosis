@@ -1,4 +1,4 @@
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+FROM python:3.12-slim
 
 LABEL org.opencontainers.image.title="gnosis"
 LABEL org.opencontainers.image.description="Web scraping → LLM-ready Markdown with byte-level provenance (MCP server)"
@@ -6,13 +6,13 @@ LABEL org.opencontainers.image.source="https://github.com/SHCV-it/gnosis"
 
 WORKDIR /app
 
-# Install dependencies + the project into a project venv. `gnosis-mcp` is a
-# core dependency, so a plain `uv sync` pulls in the MCP SDK.
-COPY pyproject.toml uv.lock README.md ./
+COPY pyproject.toml README.md ./
 COPY gnosis/ gnosis/
-RUN uv sync --frozen --no-dev
 
-# Serve `gnosis-mcp` over stdio. Directories such as Glama wrap stdio servers
-# with mcp-proxy; `uv run` resolves the console script inside the project venv.
-# For the CLI, override the command: docker run --entrypoint gnosis ...
-CMD ["uv", "run", "gnosis-mcp"]
+# `gnosis-mcp` is a core dependency, so a plain `pip install .` pulls in the
+# MCP SDK and installs the `gnosis-mcp` console script to /usr/local/bin.
+RUN pip install --no-cache-dir .
+
+# Serve `gnosis-mcp` over stdio (CMD, not ENTRYPOINT, so Glama can wrap it
+# with mcp-proxy). For the CLI: docker run --entrypoint gnosis ...
+CMD ["gnosis-mcp"]
